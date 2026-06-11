@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { useListLeagues, getListLeaguesQueryKey } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Plus, Users, Clock, Settings } from "lucide-react";
+import { Trophy, Plus, Users, Clock, Settings, RefreshCw } from "lucide-react";
+import { SyncLeagueModal } from "@/components/SyncLeagueModal";
 
 export default function Home() {
+  const [syncOpen, setSyncOpen] = useState(false);
   const { data: leagues, isLoading } = useListLeagues({ query: { queryKey: getListLeaguesQueryKey() } });
 
   return (
@@ -15,12 +18,23 @@ export default function Home() {
           <h1 className="text-4xl md:text-5xl font-heading mb-2">Command Center</h1>
           <p className="text-muted-foreground">Manage your fantasy football leagues and dominate draft day.</p>
         </div>
-        <Link href="/leagues/new" className="inline-flex">
-          <Button size="lg" className="font-heading text-xl h-12 uppercase tracking-wide">
-            <Plus className="mr-2 h-5 w-5" /> Create League
+        <div className="flex items-center gap-3">
+          <Button
+            size="lg"
+            variant="outline"
+            className="font-heading text-base h-12 uppercase tracking-wide"
+            onClick={() => setSyncOpen(true)}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" /> Sync League
           </Button>
-        </Link>
+          <Link href="/leagues/new" className="inline-flex">
+            <Button size="lg" className="font-heading text-xl h-12 uppercase tracking-wide">
+              <Plus className="mr-2 h-5 w-5" /> Create League
+            </Button>
+          </Link>
+        </div>
       </div>
+      <SyncLeagueModal open={syncOpen} onOpenChange={setSyncOpen} />
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

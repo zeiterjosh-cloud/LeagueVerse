@@ -13,6 +13,8 @@ export const leaguesTable = pgTable("leagues", {
   status: text("status").notNull().default("setup"),
   theme: text("theme").notNull().default("nfl"),
   timerSeconds: integer("timer_seconds"),
+  platformSource: text("platform_source"),
+  externalId: text("external_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

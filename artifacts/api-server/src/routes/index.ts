@@ -6,6 +6,7 @@ import playersRouter from "./players";
 import picksRouter from "./picks";
 import draftRouter from "./draft";
 import leagueSummaryRouter from "./league_summary";
+import syncRouter from "./sync";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(playersRouter);
 router.use(picksRouter);
 router.use(draftRouter);
 router.use(leagueSummaryRouter);
+router.use(syncRouter);
 
 export default router;
