@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -16,7 +16,9 @@ export const leaguesTable = pgTable("leagues", {
   platformSource: text("platform_source"),
   externalId: text("external_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => [
+  unique("leagues_platform_external_uniq").on(t.platformSource, t.externalId),
+]);
 
 export const insertLeagueSchema = createInsertSchema(leaguesTable).omit({ id: true, createdAt: true });
 export type InsertLeague = z.infer<typeof insertLeagueSchema>;
