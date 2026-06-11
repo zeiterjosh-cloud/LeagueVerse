@@ -1,22 +1,33 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: LeagueVerse Fantasy Football Draft API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: leagues
+    description: League management
+  - name: teams
+    description: Team management
+  - name: players
+    description: NFL player data
+  - name: picks
+    description: Draft pick operations
+  - name: draft
+    description: Live draft state and actions
+  - name: ai
+    description: AI assistant and grades
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +35,538 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /leagues:
+    get:
+      operationId: listLeagues
+      tags: [leagues]
+      summary: List all leagues
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/League"
+    post:
+      operationId: createLeague
+      tags: [leagues]
+      summary: Create a new league
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeagueInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/League"
+
+  /leagues/{leagueId}:
+    get:
+      operationId: getLeague
+      tags: [leagues]
+      summary: Get a league by ID
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/League"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateLeague
+      tags: [leagues]
+      summary: Update a league
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeagueUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/League"
+    delete:
+      operationId: deleteLeague
+      tags: [leagues]
+      summary: Delete a league
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /leagues/{leagueId}/teams:
+    get:
+      operationId: listTeams
+      tags: [teams]
+      summary: List teams in a league
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Team"
+    post:
+      operationId: createTeam
+      tags: [teams]
+      summary: Add a team to a league
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+
+  /leagues/{leagueId}/teams/{teamId}:
+    get:
+      operationId: getTeam
+      tags: [teams]
+      summary: Get a team
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+    patch:
+      operationId: updateTeam
+      tags: [teams]
+      summary: Update a team
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+
+  /players:
+    get:
+      operationId: listPlayers
+      tags: [players]
+      summary: List all players
+      parameters:
+        - name: position
+          in: query
+          schema:
+            type: string
+        - name: available
+          in: query
+          schema:
+            type: boolean
+        - name: leagueId
+          in: query
+          schema:
+            type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Player"
+
+  /players/{playerId}:
+    get:
+      operationId: getPlayer
+      tags: [players]
+      summary: Get a player
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+
+  /leagues/{leagueId}/draft:
+    get:
+      operationId: getDraftState
+      tags: [draft]
+      summary: Get current draft state for a league
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftState"
+
+  /leagues/{leagueId}/draft/start:
+    post:
+      operationId: startDraft
+      tags: [draft]
+      summary: Start the draft
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftState"
+
+  /leagues/{leagueId}/draft/pause:
+    post:
+      operationId: pauseDraft
+      tags: [draft]
+      summary: Pause or resume the draft
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftState"
+
+  /leagues/{leagueId}/picks:
+    get:
+      operationId: listPicks
+      tags: [picks]
+      summary: List all picks in a league draft
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pick"
+    post:
+      operationId: makePick
+      tags: [picks]
+      summary: Make a draft pick
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PickInput"
+      responses:
+        "201":
+          description: Pick made
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pick"
+
+  /leagues/{leagueId}/picks/{pickId}:
+    get:
+      operationId: getPick
+      tags: [picks]
+      summary: Get a specific pick
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: pickId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pick"
+
+  /leagues/{leagueId}/draft/board:
+    get:
+      operationId: getDraftBoard
+      tags: [draft]
+      summary: Get full draft board with all picks organized by round and team
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftBoard"
+
+  /leagues/{leagueId}/draft/recommendations:
+    get:
+      operationId: getDraftRecommendations
+      tags: [ai]
+      summary: Get AI-powered draft recommendations for the team on the clock
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftRecommendations"
+
+  /leagues/{leagueId}/draft/grades:
+    get:
+      operationId: getDraftGrades
+      tags: [ai]
+      summary: Get draft grades for all teams
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamGrade"
+
+  /leagues/{leagueId}/draft/activity:
+    get:
+      operationId: getDraftActivity
+      tags: [draft]
+      summary: Get recent draft activity feed
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+  /leagues/{leagueId}/draft/position-scarcity:
+    get:
+      operationId: getPositionScarcity
+      tags: [draft]
+      summary: Get position scarcity heat map data
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PositionScarcity"
+
+  /leagues/{leagueId}/teams/{teamId}/needs:
+    get:
+      operationId: getTeamNeeds
+      tags: [teams]
+      summary: Get team positional needs analysis
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamNeeds"
+
+  /leagues/{leagueId}/teams/{teamId}/roster:
+    get:
+      operationId: getTeamRoster
+      tags: [teams]
+      summary: Get a team's current roster
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pick"
+
+  /leagues/{leagueId}/summary:
+    get:
+      operationId: getLeagueSummary
+      tags: [leagues]
+      summary: Get league summary with stats and status
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeagueSummary"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +577,377 @@ components:
       required:
         - status
 
+    League:
+      type: object
+      required: [id, name, commissionerName, numTeams, numRounds, draftType, scoringType, status, theme, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        commissionerName:
+          type: string
+        numTeams:
+          type: integer
+        numRounds:
+          type: integer
+        draftType:
+          type: string
+          enum: [snake, auction, linear]
+        scoringType:
+          type: string
+          enum: [standard, ppr, half_ppr]
+        status:
+          type: string
+          enum: [setup, predraft, drafting, completed]
+        theme:
+          type: string
+          enum: [nfl, wwe, star_wars, marvel, cyberpunk, sports_bar, vegas]
+        timerSeconds:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    LeagueInput:
+      type: object
+      required: [name, commissionerName, numTeams, numRounds, draftType, scoringType]
+      properties:
+        name:
+          type: string
+        commissionerName:
+          type: string
+        numTeams:
+          type: integer
+          minimum: 4
+          maximum: 20
+        numRounds:
+          type: integer
+          minimum: 10
+          maximum: 20
+        draftType:
+          type: string
+          enum: [snake, auction, linear]
+        scoringType:
+          type: string
+          enum: [standard, ppr, half_ppr]
+        theme:
+          type: string
+          enum: [nfl, wwe, star_wars, marvel, cyberpunk, sports_bar, vegas]
+        timerSeconds:
+          type: integer
+
+    LeagueUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        theme:
+          type: string
+          enum: [nfl, wwe, star_wars, marvel, cyberpunk, sports_bar, vegas]
+        status:
+          type: string
+          enum: [setup, predraft, drafting, completed]
+        timerSeconds:
+          type: integer
+
+    Team:
+      type: object
+      required: [id, leagueId, name, ownerName, draftPosition, createdAt]
+      properties:
+        id:
+          type: integer
+        leagueId:
+          type: integer
+        name:
+          type: string
+        ownerName:
+          type: string
+        draftPosition:
+          type: integer
+        logoUrl:
+          type: ["string", "null"]
+        walkUpSong:
+          type: ["string", "null"]
+        primaryColor:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    TeamInput:
+      type: object
+      required: [name, ownerName, draftPosition]
+      properties:
+        name:
+          type: string
+        ownerName:
+          type: string
+        draftPosition:
+          type: integer
+        logoUrl:
+          type: string
+        walkUpSong:
+          type: string
+        primaryColor:
+          type: string
+
+    TeamUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        ownerName:
+          type: string
+        logoUrl:
+          type: string
+        walkUpSong:
+          type: string
+        primaryColor:
+          type: string
+
+    Player:
+      type: object
+      required: [id, name, position, nflTeam, rank, adp, projectedPoints, byeWeek, status]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        position:
+          type: string
+          enum: [QB, RB, WR, TE, K, DEF]
+        nflTeam:
+          type: string
+        rank:
+          type: integer
+        adp:
+          type: number
+        projectedPoints:
+          type: number
+        byeWeek:
+          type: integer
+        status:
+          type: string
+          enum: [active, injured, questionable, out, ir]
+        injuryNote:
+          type: ["string", "null"]
+        isDrafted:
+          type: boolean
+
+    Pick:
+      type: object
+      required: [id, leagueId, teamId, playerId, round, pickInRound, overallPick, createdAt]
+      properties:
+        id:
+          type: integer
+        leagueId:
+          type: integer
+        teamId:
+          type: integer
+        playerId:
+          type: integer
+        round:
+          type: integer
+        pickInRound:
+          type: integer
+        overallPick:
+          type: integer
+        grade:
+          type: ["string", "null"]
+        gradeExplanation:
+          type: ["string", "null"]
+        valueScore:
+          type: ["number", "null"]
+        createdAt:
+          type: string
+        player:
+          $ref: "#/components/schemas/Player"
+        team:
+          $ref: "#/components/schemas/Team"
+
+    PickInput:
+      type: object
+      required: [teamId, playerId]
+      properties:
+        teamId:
+          type: integer
+        playerId:
+          type: integer
+
+    DraftState:
+      type: object
+      required: [leagueId, status, currentOverallPick, currentRound, currentPickInRound, onTheClockTeamId, totalPicks]
+      properties:
+        leagueId:
+          type: integer
+        status:
+          type: string
+          enum: [not_started, active, paused, completed]
+        currentOverallPick:
+          type: integer
+        currentRound:
+          type: integer
+        currentPickInRound:
+          type: integer
+        onTheClockTeamId:
+          type: ["integer", "null"]
+        totalPicks:
+          type: integer
+        timerSecondsRemaining:
+          type: ["integer", "null"]
+        lastPickId:
+          type: ["integer", "null"]
+
+    DraftBoard:
+      type: object
+      required: [leagueId, rounds, teams, picks]
+      properties:
+        leagueId:
+          type: integer
+        rounds:
+          type: integer
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/Team"
+        picks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Pick"
+
+    DraftRecommendations:
+      type: object
+      required: [teamId, recommendations, analysis]
+      properties:
+        teamId:
+          type: integer
+        analysis:
+          type: string
+        recommendations:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerRecommendation"
+
+    PlayerRecommendation:
+      type: object
+      required: [playerId, playerName, position, reason, type, confidenceScore]
+      properties:
+        playerId:
+          type: integer
+        playerName:
+          type: string
+        position:
+          type: string
+        reason:
+          type: string
+        type:
+          type: string
+          enum: [best_pick, safest_pick, highest_upside, biggest_steal, positional_need]
+        confidenceScore:
+          type: number
+
+    TeamGrade:
+      type: object
+      required: [teamId, teamName, overallGrade, gradeScore, summary, positionalGrades]
+      properties:
+        teamId:
+          type: integer
+        teamName:
+          type: string
+        overallGrade:
+          type: string
+        gradeScore:
+          type: number
+        summary:
+          type: string
+        positionalGrades:
+          type: object
+          additionalProperties:
+            type: string
+
+    ActivityItem:
+      type: object
+      required: [id, type, message, timestamp]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [pick, grade, announcement, alert, trade]
+        message:
+          type: string
+        playerName:
+          type: ["string", "null"]
+        teamName:
+          type: ["string", "null"]
+        grade:
+          type: ["string", "null"]
+        timestamp:
+          type: string
+
+    PositionScarcity:
+      type: object
+      required: [position, totalAvailable, top10Available, top20Available, scarcityLevel]
+      properties:
+        position:
+          type: string
+        totalAvailable:
+          type: integer
+        top10Available:
+          type: integer
+        top20Available:
+          type: integer
+        scarcityLevel:
+          type: string
+          enum: [low, medium, high, critical]
+
+    TeamNeeds:
+      type: object
+      required: [teamId, needs]
+      properties:
+        teamId:
+          type: integer
+        needs:
+          type: array
+          items:
+            $ref: "#/components/schemas/PositionNeed"
+
+    PositionNeed:
+      type: object
+      required: [position, needLevel, currentCount, targetCount, message]
+      properties:
+        position:
+          type: string
+        needLevel:
+          type: string
+          enum: [none, low, medium, high, critical]
+        currentCount:
+          type: integer
+        targetCount:
+          type: integer
+        message:
+          type: string
+
+    LeagueSummary:
+      type: object
+      required: [leagueId, totalPicks, picksRemaining, completionPercent, topPicksByPosition, recentPicks, teamGrades]
+      properties:
+        leagueId:
+          type: integer
+        totalPicks:
+          type: integer
+        picksRemaining:
+          type: integer
+        completionPercent:
+          type: number
+        topPicksByPosition:
+          type: object
+          additionalProperties:
+            type: string
+        recentPicks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Pick"
+        teamGrades:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamGrade"
