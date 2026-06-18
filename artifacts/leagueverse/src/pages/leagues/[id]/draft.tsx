@@ -1,5 +1,5 @@
 import { useParams } from "wouter";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetLeague, getGetLeagueQueryKey,
@@ -169,23 +169,68 @@ function postPickReaction(pick: RevealPick) {
   return `${owner} locks in ${pick.player?.name}. Clean fit, fast reaction, grade ${pick.grade}.`;
 }
 
-function playWalkUp(songName?: string | null) {
-  const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioContextClass) return;
-  const context = new AudioContextClass();
+const demoWalkUpUrls = new Map<string, string>();
+
+function createDemoWalkUpUrl(songName?: string | null) {
+  const key = songName ?? "LeagueVerse Demo";
+  const cached = demoWalkUpUrls.get(key);
+  if (cached) return cached;
+
   const notes = songs[(songName ?? "") as keyof typeof songs] ?? [146, 196, 246, 329];
-  notes.forEach((frequency, index) => {
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = index % 2 === 0 ? "sawtooth" : "square";
-    oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(0, context.currentTime + index * 0.18);
-    gain.gain.linearRampToValueAtTime(0.06, context.currentTime + index * 0.18 + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + index * 0.18 + 0.16);
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start(context.currentTime + index * 0.18);
-    oscillator.stop(context.currentTime + index * 0.18 + 0.18);
-  });
+  const sampleRate = 22050;
+  const seconds = 2.4;
+  const sampleCount = Math.floor(sampleRate * seconds);
+  const dataSize = sampleCount * 2;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+
+  const writeString = (offset: number, value: string) => {
+    for (let i = 0; i < value.length; i += 1) view.setUint8(offset + i, value.charCodeAt(i));
+  };
+
+  writeString(0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, "data");
+  view.setUint32(40, dataSize, true);
+
+  for (let i = 0; i < sampleCount; i += 1) {
+    const t = i / sampleRate;
+    const noteIndex = Math.min(notes.length - 1, Math.floor((t / seconds) * notes.length));
+    const frequency = notes[noteIndex] ?? 220;
+    const envelope = Math.min(1, t * 8) * Math.max(0, 1 - t / seconds);
+    const tone = Math.sin(2 * Math.PI * frequency * t) + 0.35 * Math.sin(2 * Math.PI * frequency * 2 * t);
+    const pulse = Math.sin(2 * Math.PI * 2.5 * t) > -0.35 ? 1 : 0.45;
+    const sample = Math.max(-1, Math.min(1, tone * envelope * pulse * 0.28));
+    view.setInt16(44 + i * 2, sample * 32767, true);
+  }
+
+  const url = URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
+  demoWalkUpUrls.set(key, url);
+  return url;
+}
+
+function isPlayableAudioUrl(url?: string | null) {
+  return !!url && /^(https?:\/\/|data:audio\/|blob:)/i.test(url);
+}
+
+function getWalkUpAudioSource(team?: OwnerProfileTeam | null) {
+  if (!team) return null;
+  if (isPlayableAudioUrl(team.walkUpSongUrl)) {
+    return { url: team.walkUpSongUrl!, label: "Custom walk-up audio URL" };
+  }
+  if (team.walkUpSong) {
+    return { url: createDemoWalkUpUrl(team.walkUpSong), label: `Safe LeagueVerse demo audio for ${team.walkUpSong}` };
+  }
+  return null;
 }
 
 function playPickRevealSound(firstRound: boolean) {
@@ -216,13 +261,14 @@ export default function DraftBoard() {
     const params = new URLSearchParams(window.location.search);
     return params.get("tv") === "1" || params.get("tv") === "true";
   });
-  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [audioStatus, setAudioStatus] = useState("Click Play Walk-Up to start audio.");
   const [localClock, setLocalClock] = useState(60);
   const [timerDraftValue, setTimerDraftValue] = useState(60);
   const [manualTeamId, setManualTeamId] = useState("");
   const [manualPlayerId, setManualPlayerId] = useState("");
   const [recentReveal, setRecentReveal] = useState<RevealPick | null>(null);
   const [showTunnel, setShowTunnel] = useState(false);
+  const walkUpAudioRef = useRef<HTMLAudioElement | null>(null);
   const queryClient = useQueryClient();
 
   const { data: league } = useGetLeague(leagueId, {
@@ -342,16 +388,32 @@ export default function DraftBoard() {
   }, []);
 
   useEffect(() => {
-    if (audioEnabled && onTheClockTeam) playWalkUp(onTheClockTeam.walkUpSong);
-  }, [audioEnabled, onTheClockTeam?.id]);
-
-  useEffect(() => {
     if (!onTheClockTeam) return;
     if (new URLSearchParams(window.location.search).get("tunnel") === "0") return;
     setShowTunnel(true);
     const timeout = window.setTimeout(() => setShowTunnel(false), 4200);
     return () => window.clearTimeout(timeout);
   }, [onTheClockTeam?.id]);
+
+  const playWalkUpAudio = async () => {
+    const source = getWalkUpAudioSource(onTheClockProfile);
+    if (!source) {
+      setAudioStatus("No audio URL exists for this team. Add one on the owner profile or choose a demo walk-up song.");
+      return;
+    }
+
+    try {
+      if (!walkUpAudioRef.current) walkUpAudioRef.current = new Audio();
+      walkUpAudioRef.current.pause();
+      walkUpAudioRef.current.currentTime = 0;
+      walkUpAudioRef.current.src = source.url;
+      walkUpAudioRef.current.volume = 0.8;
+      await walkUpAudioRef.current.play();
+      setAudioStatus(`Playing: ${source.label}`);
+    } catch {
+      setAudioStatus("Audio could not play. Check that the URL is a playable audio file and click Play Walk-Up again.");
+    }
+  };
 
   const toggleTvMode = async () => {
     if (!document.fullscreenElement) {
@@ -576,6 +638,12 @@ export default function DraftBoard() {
                 <Badge variant="outline" className="justify-center py-2"><Music2 className="mr-2 h-4 w-4" /> {onTheClockProfile.walkUpSong ?? "Walk-up cue"}</Badge>
                 <Badge variant="outline" className="justify-center py-2"><Radio className="mr-2 h-4 w-4" /> {onTheClockProfile.soundEffectUrl ?? "mock://stadium-hit"}</Badge>
               </div>
+              <div className="mt-5 flex flex-col items-center gap-2">
+                <Button onClick={playWalkUpAudio} className="font-heading uppercase shadow-[0_0_30px_rgba(168,85,247,0.35)]">
+                  <Volume2 className="mr-2 h-4 w-4" /> Play Walk-Up
+                </Button>
+                <div className="max-w-xl text-center text-xs text-purple-100/75">{audioStatus}</div>
+              </div>
               <div className="mt-6 rounded-lg border border-purple-400/25 bg-background/55 p-4 text-lg text-purple-100">
                 {announcerText}
               </div>
@@ -625,8 +693,8 @@ export default function DraftBoard() {
             <div className="font-heading text-3xl text-accent">{draftState?.currentRound ?? 1}.{draftState?.currentPickInRound ?? 1}</div>
             <div className="text-sm text-muted-foreground">Overall {draftState?.currentOverallPick ?? 1}</div>
           </div>
-          <Button variant="outline" onClick={() => { setAudioEnabled(true); playWalkUp(onTheClockProfile?.walkUpSong); }} className="font-heading uppercase">
-            <Volume2 className="mr-2 h-4 w-4" /> Walk-Up
+          <Button variant="outline" onClick={playWalkUpAudio} className="font-heading uppercase">
+            <Volume2 className="mr-2 h-4 w-4" /> Play Walk-Up
           </Button>
           <Button variant="outline" onClick={() => setShowTunnel(true)} className="font-heading uppercase">
             <Radio className="mr-2 h-4 w-4" /> Tunnel
@@ -634,6 +702,7 @@ export default function DraftBoard() {
           <Button onClick={toggleTvMode} className="font-heading uppercase">
             {tvMode ? <Expand className="mr-2 h-4 w-4" /> : <Maximize2 className="mr-2 h-4 w-4" />} TV Mode
           </Button>
+          <div className="basis-full text-right text-xs text-purple-100/70">{audioStatus}</div>
         </div>
       </div>
 
@@ -854,7 +923,14 @@ export default function DraftBoard() {
                 <div className="rounded bg-background/70 border border-border p-2"><span className="text-muted-foreground">Rivalries:</span> {onTheClockProfile?.rivalries ?? "TBD"}</div>
                 <div className="rounded bg-background/70 border border-border p-2"><span className="text-muted-foreground">Championships:</span> {onTheClockProfile?.championshipHistory ?? "New franchise"}</div>
                 <div className="rounded bg-background/70 border border-border p-2"><span className="text-muted-foreground">Team Banner:</span> {onTheClockProfile?.bannerUrl ?? "mock://banner"}</div>
-                <div className="rounded bg-background/70 border border-border p-2"><span className="text-muted-foreground">Song URL:</span> {onTheClockProfile?.walkUpSongUrl ?? "mock://walk-up"}</div>
+                <div className="rounded bg-background/70 border border-border p-2">
+                  <span className="text-muted-foreground">Audio:</span>{" "}
+                  {isPlayableAudioUrl(onTheClockProfile?.walkUpSongUrl)
+                    ? onTheClockProfile?.walkUpSongUrl
+                    : onTheClockProfile?.walkUpSong
+                      ? `Safe demo audio: ${onTheClockProfile.walkUpSong}`
+                      : "No audio URL yet"}
+                </div>
                 <div className="rounded bg-background/70 border border-border p-2"><span className="text-muted-foreground">SFX:</span> {onTheClockProfile?.soundEffectUrl ?? "mock://sfx"}</div>
               </div>
             </div>
