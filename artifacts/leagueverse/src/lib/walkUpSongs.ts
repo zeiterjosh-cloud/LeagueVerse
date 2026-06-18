@@ -63,82 +63,10 @@ export function getDefaultWalkUpSongUrl(title?: string | null) {
   return getWalkUpSongPreviewUrl(title) ?? demoMp3Urls[0];
 }
 
-const songNotes: Record<string, number[]> = {
-  "Thunderstruck": [130, 164, 196, 246],
-  "Lose Yourself": [110, 147, 220, 294],
-  "Seven Nation Army": [98, 147, 196, 220],
-  "All I Do Is Win": [164, 220, 277, 330],
-  "Power": [123, 185, 247, 370],
-  "Can't Hold Us": [147, 196, 294, 392],
-  "Sirius": [146, 185, 220, 294],
-  "Welcome to the Jungle": [110, 165, 220, 330],
-  "HUMBLE.": [92, 138, 185, 277],
-  "Till I Collapse": [98, 147, 196, 294],
-  "Remember the Name": [123, 164, 246, 329],
-  "We Will Rock You": [82, 123, 164, 246],
-  "Started From the Bottom": [104, 156, 208, 312],
-  "Eye of the Tiger": [131, 196, 262, 392],
-  "Jump Around": [147, 220, 294, 440],
-};
-
-const demoWalkUpUrls = new Map<string, string>();
-
-export function createDemoWalkUpUrl(songName?: string | null) {
-  const key = songName ?? "LeagueVerse Demo";
-  const cached = demoWalkUpUrls.get(key);
-  if (cached) return cached;
-
-  const notes = songNotes[key] ?? [146, 196, 246, 329];
-  const sampleRate = 44100;
-  const seconds = 4;
-  const sampleCount = Math.floor(sampleRate * seconds);
-  const dataSize = sampleCount * 2;
-  const buffer = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(buffer);
-
-  const writeString = (offset: number, value: string) => {
-    for (let i = 0; i < value.length; i += 1) view.setUint8(offset + i, value.charCodeAt(i));
-  };
-
-  writeString(0, "RIFF");
-  view.setUint32(4, 36 + dataSize, true);
-  writeString(8, "WAVE");
-  writeString(12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeString(36, "data");
-  view.setUint32(40, dataSize, true);
-
-  for (let i = 0; i < sampleCount; i += 1) {
-    const t = i / sampleRate;
-    const noteIndex = Math.floor((t / seconds) * notes.length) % notes.length;
-    const frequency = notes[noteIndex] ?? 220;
-    const beat = Math.sin(2 * Math.PI * 2 * t) > -0.15 ? 1 : 0.52;
-    const introFade = Math.min(1, t * 6);
-    const outroFade = Math.min(1, (seconds - t) * 4);
-    const envelope = introFade * outroFade;
-    const lead = Math.sin(2 * Math.PI * frequency * t);
-    const octave = 0.38 * Math.sin(2 * Math.PI * frequency * 2 * t);
-    const bass = 0.32 * Math.sin(2 * Math.PI * (frequency / 2) * t);
-    const sample = Math.max(-1, Math.min(1, (lead + octave + bass) * envelope * beat * 0.34));
-    view.setInt16(44 + i * 2, Math.round(sample * 32767), true);
-  }
-
-  const url = URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
-  demoWalkUpUrls.set(key, url);
-  return url;
-}
-
 export function getResolvedWalkUpAudio(songName?: string | null, customUrl?: string | null) {
   if (isPlayableAudioUrl(customUrl)) return { url: customUrl as string, label: "Actual song preview URL" };
   const catalogPreviewUrl = getWalkUpSongPreviewUrl(songName);
   if (catalogPreviewUrl) return { url: catalogPreviewUrl, label: `Licensed preview for ${songName}` };
-  if (songName) return { url: createDemoWalkUpUrl(songName), label: `Demo preview for ${songName}` };
   return { url: getDefaultWalkUpSongUrl("Thunderstruck"), label: "Default LeagueVerse demo MP3" };
 }
 
@@ -164,5 +92,7 @@ export function filterWalkUpSongs(filter: WalkUpSongCategoryFilter, query: strin
 }
 
 export function isPlayableAudioUrl(url?: string | null) {
-  return !!url && /^(https?:\/\/|data:audio\/|blob:)/i.test(url);
+  if (!url) return false;
+  if (/^(blob:|data:audio\/)/i.test(url)) return true;
+  return /^https?:\/\/.+\.(mp3|wav|ogg)(\?.*)?$/i.test(url);
 }

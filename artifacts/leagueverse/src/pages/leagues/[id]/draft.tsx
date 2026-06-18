@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Activity, AlertTriangle, Bot, Brain, Clock, Crown, Expand, Flame, Maximize2, Megaphone, Music2, Pause, Radio, RotateCcw, Search, ShieldCheck, Sparkles, Star, Swords, Target, Trophy, UserPlus, Volume2, Zap } from "lucide-react";
+import { Activity, AlertTriangle, Bot, Brain, Clock, Crown, Expand, Flame, Maximize2, Megaphone, Music2, Pause, Radio, RotateCcw, Search, ShieldCheck, Sparkles, Square, Star, Swords, Target, Trophy, UserPlus, Volume2, Zap } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { getResolvedWalkUpAudio, isPlayableAudioUrl } from "@/lib/walkUpSongs";
 
@@ -169,22 +169,7 @@ function getWalkUpAudioSource(team?: OwnerProfileTeam | null) {
 }
 
 function playPickRevealSound(firstRound: boolean) {
-  const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioContextClass) return;
-  const context = new AudioContextClass();
-  const notes = firstRound ? [196, 247, 330, 392, 523] : [164, 220, 277, 330];
-  notes.forEach((frequency, index) => {
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = "triangle";
-    oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(0, context.currentTime + index * 0.11);
-    gain.gain.linearRampToValueAtTime(firstRound ? 0.08 : 0.05, context.currentTime + index * 0.11 + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + index * 0.11 + 0.16);
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start(context.currentTime + index * 0.11);
-    oscillator.stop(context.currentTime + index * 0.11 + 0.18);
-  });
+  console.log("[LeagueVerse Pick Reveal Sound Placeholder]", { firstRound });
 }
 
 export default function DraftBoard() {
@@ -342,14 +327,34 @@ export default function DraftBoard() {
   }, [onTheClockProfile?.name, onTheClockProfile?.ownerName, onTheClockProfile?.walkUpSongUrl, onTheClockProfile?.audioUrl, onTheClockProfile?.walkUpSong, onTheClockProfile?.soundEffectUrl, onTheClockProfile?.soundEffect]);
 
   const playWalkUpAudio = async () => {
-    const source = getWalkUpAudioSource(onTheClockProfile);
     const storedAudioUrl = onTheClockProfile?.walkUpSongUrl ?? onTheClockProfile?.audioUrl;
+    const isPlaceholderUrl = !!storedAudioUrl && /^mock:\/\//i.test(storedAudioUrl);
+    if (storedAudioUrl && !isPlaceholderUrl && !isPlayableAudioUrl(storedAudioUrl)) {
+      console.log("[LeagueVerse Walk-Up]", {
+        teamName: onTheClockProfile?.name,
+        ownerName: onTheClockProfile?.ownerName,
+        storedAudioUrl,
+        selectedSong: onTheClockProfile?.walkUpSong,
+        audioElementSource: walkUpAudioRef.current?.src ?? null,
+        validation: "Please enter a direct audio file URL.",
+      });
+      if (walkUpAudioRef.current) {
+        walkUpAudioRef.current.pause();
+        walkUpAudioRef.current.removeAttribute("src");
+        walkUpAudioRef.current.load();
+      }
+      setAudioStatus("Please enter a direct audio file URL.");
+      return;
+    }
+
+    const source = getWalkUpAudioSource(onTheClockProfile);
     console.log("[LeagueVerse Walk-Up]", {
       teamName: onTheClockProfile?.name,
       ownerName: onTheClockProfile?.ownerName,
       storedAudioUrl,
       selectedSong: onTheClockProfile?.walkUpSong,
       resolvedAudioUrl: source?.url,
+      audioElementSource: walkUpAudioRef.current?.src ?? null,
     });
     if (!source) {
       setAudioStatus("No audio URL exists for this team. Add one on the owner profile or choose a demo walk-up song.");
@@ -362,11 +367,33 @@ export default function DraftBoard() {
       walkUpAudioRef.current.src = source.url;
       walkUpAudioRef.current.volume = 0.8;
       walkUpAudioRef.current.currentTime = 0;
+      console.log("[LeagueVerse Walk-Up Audio Element]", {
+        selectedSong: onTheClockProfile?.walkUpSong,
+        audioUrl: source.url,
+        audioElementSource: walkUpAudioRef.current.src,
+      });
+      walkUpAudioRef.current.onerror = () => {
+        walkUpAudioRef.current?.pause();
+        setAudioStatus("Audio decode failed. Please enter a direct MP3, WAV, or OGG file URL.");
+      };
       await walkUpAudioRef.current.play();
       setAudioStatus(`${isPlayableAudioUrl(storedAudioUrl) ? "Playing" : "No stored audio URL; playing fallback"}: ${source.label}`);
     } catch {
+      if (walkUpAudioRef.current) {
+        walkUpAudioRef.current.pause();
+      }
       setAudioStatus("Audio could not play. Check that the URL is a playable audio file and click Play Walk-Up again.");
     }
+  };
+
+  const stopWalkUpAudio = () => {
+    if (!walkUpAudioRef.current) {
+      setAudioStatus("No walk-up audio is currently playing.");
+      return;
+    }
+    walkUpAudioRef.current.pause();
+    walkUpAudioRef.current.currentTime = 0;
+    setAudioStatus("Walk-up audio stopped.");
   };
 
   const toggleTvMode = async () => {
@@ -596,6 +623,9 @@ export default function DraftBoard() {
                 <Button onClick={playWalkUpAudio} className="font-heading uppercase shadow-[0_0_30px_rgba(168,85,247,0.35)]">
                   <Volume2 className="mr-2 h-4 w-4" /> Play Walk-Up
                 </Button>
+                <Button onClick={stopWalkUpAudio} variant="outline" className="font-heading uppercase">
+                  <Square className="mr-2 h-4 w-4" /> Stop Audio
+                </Button>
                 <div className="max-w-xl text-center text-xs text-purple-100/75">{audioStatus}</div>
               </div>
               <div className="mt-6 rounded-lg border border-purple-400/25 bg-background/55 p-4 text-lg text-purple-100">
@@ -649,6 +679,9 @@ export default function DraftBoard() {
           </div>
           <Button variant="outline" onClick={playWalkUpAudio} className="font-heading uppercase">
             <Volume2 className="mr-2 h-4 w-4" /> Play Walk-Up
+          </Button>
+          <Button variant="outline" onClick={stopWalkUpAudio} className="font-heading uppercase">
+            <Square className="mr-2 h-4 w-4" /> Stop Audio
           </Button>
           <Button variant="outline" onClick={() => setShowTunnel(true)} className="font-heading uppercase">
             <Radio className="mr-2 h-4 w-4" /> Tunnel
