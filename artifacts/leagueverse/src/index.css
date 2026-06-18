@@ -101,51 +101,51 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  /* Deep dark slate for command center feel */
-  --background: 222 47% 5%;
+  /* Purple-black premium sports broadcast theme */
+  --background: 260 38% 4%;
   --foreground: 210 40% 98%;
 
-  --border: 217 32% 17%;
+  --border: 267 36% 18%;
   
-  --card: 222 47% 8%;
+  --card: 260 36% 7%;
   --card-foreground: 210 40% 98%;
   --card-border: 217 32% 17%;
 
-  --sidebar: 222 47% 7%;
+  --sidebar: 260 36% 6%;
   --sidebar-foreground: 210 40% 98%;
   --sidebar-border: 217 32% 17%;
-  --sidebar-primary: 142 70% 45%;
+  --sidebar-primary: 270 92% 65%;
   --sidebar-primary-foreground: 222 47% 5%;
   --sidebar-accent: 217 32% 17%;
   --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-ring: 142 70% 45%;
+  --sidebar-ring: 270 92% 65%;
 
-  --popover: 222 47% 8%;
+  --popover: 260 36% 7%;
   --popover-foreground: 210 40% 98%;
   --popover-border: 217 32% 17%;
 
-  /* Electric Emerald Turf Green */
-  --primary: 142 70% 45%;
+  /* LeagueVerse Neon Purple */
+  --primary: 270 92% 65%;
   --primary-foreground: 222 47% 5%;
 
-  --secondary: 217 32% 17%;
+  --secondary: 267 36% 18%;
   --secondary-foreground: 210 40% 98%;
 
-  --muted: 217 32% 17%;
+  --muted: 267 36% 18%;
   --muted-foreground: 215 20.2% 65.1%;
 
-  /* Championship Amber/Gold */
-  --accent: 45 93% 47%;
+  /* Championship Violet Pink */
+  --accent: 291 92% 61%;
   --accent-foreground: 222 47% 5%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
 
-  --input: 217 32% 17%;
-  --ring: 142 70% 45%;
+  --input: 267 36% 18%;
+  --ring: 270 92% 65%;
   
-  --chart-1: 142 70% 45%;
-  --chart-2: 45 93% 47%;
+  --chart-1: 270 92% 65%;
+  --chart-2: 291 92% 61%;
   --chart-3: 199 89% 48%;
   --chart-4: 28 85% 58%;
   --chart-5: 270 70% 60%;

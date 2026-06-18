@@ -9,10 +9,10 @@ router.get("/leagues/:leagueId/teams", async (req, res) => {
   try {
     const leagueId = Number(req.params.leagueId);
     const teams = await db.select().from(teamsTable).where(eq(teamsTable.leagueId, leagueId)).orderBy(teamsTable.draftPosition);
-    res.json(teams.map(formatTeam));
+    return res.json(teams.map(formatTeam));
   } catch (err) {
     logger.error({ err }, "Failed to list teams");
-    res.status(500).json({ error: "Failed to list teams" });
+    return res.status(500).json({ error: "Failed to list teams" });
   }
 });
 
@@ -29,10 +29,10 @@ router.post("/leagues/:leagueId/teams", async (req, res) => {
       walkUpSong: walkUpSong ?? null,
       primaryColor: primaryColor ?? null,
     }).returning();
-    res.status(201).json(formatTeam(team));
+    return res.status(201).json(formatTeam(team));
   } catch (err) {
     logger.error({ err }, "Failed to create team");
-    res.status(500).json({ error: "Failed to create team" });
+    return res.status(500).json({ error: "Failed to create team" });
   }
 });
 
@@ -42,10 +42,10 @@ router.get("/leagues/:leagueId/teams/:teamId", async (req, res) => {
     const leagueId = Number(req.params.leagueId);
     const [team] = await db.select().from(teamsTable).where(and(eq(teamsTable.id, teamId), eq(teamsTable.leagueId, leagueId)));
     if (!team) return res.status(404).json({ error: "Team not found" });
-    res.json(formatTeam(team));
+    return res.json(formatTeam(team));
   } catch (err) {
     logger.error({ err }, "Failed to get team");
-    res.status(500).json({ error: "Failed to get team" });
+    return res.status(500).json({ error: "Failed to get team" });
   }
 });
 
@@ -61,10 +61,10 @@ router.patch("/leagues/:leagueId/teams/:teamId", async (req, res) => {
     if (req.body.primaryColor !== undefined) updates.primaryColor = req.body.primaryColor;
     const [team] = await db.update(teamsTable).set(updates).where(and(eq(teamsTable.id, teamId), eq(teamsTable.leagueId, leagueId))).returning();
     if (!team) return res.status(404).json({ error: "Team not found" });
-    res.json(formatTeam(team));
+    return res.json(formatTeam(team));
   } catch (err) {
     logger.error({ err }, "Failed to update team");
-    res.status(500).json({ error: "Failed to update team" });
+    return res.status(500).json({ error: "Failed to update team" });
   }
 });
 
@@ -109,10 +109,10 @@ router.get("/leagues/:leagueId/teams/:teamId/needs", async (req, res) => {
       return { position, needLevel, currentCount: current, targetCount: target, message };
     });
 
-    res.json({ teamId, needs });
+    return res.json({ teamId, needs });
   } catch (err) {
     logger.error({ err }, "Failed to get team needs");
-    res.status(500).json({ error: "Failed to get team needs" });
+    return res.status(500).json({ error: "Failed to get team needs" });
   }
 });
 
@@ -128,10 +128,10 @@ router.get("/leagues/:leagueId/teams/:teamId/roster", async (req, res) => {
       .where(and(eq(picksTable.leagueId, leagueId), eq(picksTable.teamId, teamId)))
       .orderBy(picksTable.overallPick);
 
-    res.json(picks.map(({ pick, player, team }) => formatPick(pick, player, team)));
+    return res.json(picks.map(({ pick, player, team }) => formatPick(pick, player, team)));
   } catch (err) {
     logger.error({ err }, "Failed to get team roster");
-    res.status(500).json({ error: "Failed to get team roster" });
+    return res.status(500).json({ error: "Failed to get team roster" });
   }
 });
 

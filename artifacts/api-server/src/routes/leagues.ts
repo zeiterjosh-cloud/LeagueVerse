@@ -8,10 +8,10 @@ const router = Router();
 router.get("/leagues", async (req, res) => {
   try {
     const leagues = await db.select().from(leaguesTable).orderBy(leaguesTable.createdAt);
-    res.json(leagues.map(formatLeague));
+    return res.json(leagues.map(formatLeague));
   } catch (err) {
     logger.error({ err }, "Failed to list leagues");
-    res.status(500).json({ error: "Failed to list leagues" });
+    return res.status(500).json({ error: "Failed to list leagues" });
   }
 });
 
@@ -29,10 +29,10 @@ router.post("/leagues", async (req, res) => {
       timerSeconds: timerSeconds ?? null,
       status: "setup",
     }).returning();
-    res.status(201).json(formatLeague(league));
+    return res.status(201).json(formatLeague(league));
   } catch (err) {
     logger.error({ err }, "Failed to create league");
-    res.status(500).json({ error: "Failed to create league" });
+    return res.status(500).json({ error: "Failed to create league" });
   }
 });
 
@@ -41,10 +41,10 @@ router.get("/leagues/:leagueId", async (req, res) => {
     const leagueId = Number(req.params.leagueId);
     const [league] = await db.select().from(leaguesTable).where(eq(leaguesTable.id, leagueId));
     if (!league) return res.status(404).json({ error: "League not found" });
-    res.json(formatLeague(league));
+    return res.json(formatLeague(league));
   } catch (err) {
     logger.error({ err }, "Failed to get league");
-    res.status(500).json({ error: "Failed to get league" });
+    return res.status(500).json({ error: "Failed to get league" });
   }
 });
 
@@ -58,10 +58,10 @@ router.patch("/leagues/:leagueId", async (req, res) => {
     if (req.body.timerSeconds !== undefined) updates.timerSeconds = req.body.timerSeconds;
     const [league] = await db.update(leaguesTable).set(updates).where(eq(leaguesTable.id, leagueId)).returning();
     if (!league) return res.status(404).json({ error: "League not found" });
-    res.json(formatLeague(league));
+    return res.json(formatLeague(league));
   } catch (err) {
     logger.error({ err }, "Failed to update league");
-    res.status(500).json({ error: "Failed to update league" });
+    return res.status(500).json({ error: "Failed to update league" });
   }
 });
 
@@ -69,10 +69,10 @@ router.delete("/leagues/:leagueId", async (req, res) => {
   try {
     const leagueId = Number(req.params.leagueId);
     await db.delete(leaguesTable).where(eq(leaguesTable.id, leagueId));
-    res.status(204).send();
+    return res.status(204).send();
   } catch (err) {
     logger.error({ err }, "Failed to delete league");
-    res.status(500).json({ error: "Failed to delete league" });
+    return res.status(500).json({ error: "Failed to delete league" });
   }
 });
 

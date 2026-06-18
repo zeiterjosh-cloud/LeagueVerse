@@ -34,10 +34,10 @@ router.get("/players", async (req, res) => {
       }
     }
 
-    res.json(result.map(formatPlayer));
+    return res.json(result.map(formatPlayer));
   } catch (err) {
     logger.error({ err }, "Failed to list players");
-    res.status(500).json({ error: "Failed to list players" });
+    return res.status(500).json({ error: "Failed to list players" });
   }
 });
 
@@ -46,10 +46,10 @@ router.get("/players/:playerId", async (req, res) => {
     const playerId = Number(req.params.playerId);
     const [player] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
     if (!player) return res.status(404).json({ error: "Player not found" });
-    res.json(formatPlayer(player));
+    return res.json(formatPlayer(player));
   } catch (err) {
     logger.error({ err }, "Failed to get player");
-    res.status(500).json({ error: "Failed to get player" });
+    return res.status(500).json({ error: "Failed to get player" });
   }
 });
 

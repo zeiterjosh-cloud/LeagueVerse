@@ -101,10 +101,10 @@ router.get("/leagues/:leagueId/summary", async (req, res) => {
       };
     });
 
-    res.json({ leagueId, totalPicks, picksRemaining, completionPercent, topPicksByPosition, recentPicks, teamGrades });
+    return res.json({ leagueId, totalPicks, picksRemaining, completionPercent, topPicksByPosition, recentPicks, teamGrades });
   } catch (err) {
     logger.error({ err }, "Failed to get league summary");
-    res.status(500).json({ error: "Failed to get league summary" });
+    return res.status(500).json({ error: "Failed to get league summary" });
   }
 });
 

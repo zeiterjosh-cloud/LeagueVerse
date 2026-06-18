@@ -35,7 +35,7 @@ router.get("/leagues/:leagueId/draft", async (req, res) => {
       });
     }
     const [league] = await db.select().from(leaguesTable).where(eq(leaguesTable.id, leagueId));
-    res.json({
+    return res.json({
       leagueId: state.leagueId,
       status: state.status,
       currentOverallPick: state.currentOverallPick,
@@ -48,7 +48,7 @@ router.get("/leagues/:leagueId/draft", async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, "Failed to get draft state");
-    res.status(500).json({ error: "Failed to get draft state" });
+    return res.status(500).json({ error: "Failed to get draft state" });
   }
 });
 
@@ -89,7 +89,7 @@ router.post("/leagues/:leagueId/draft/start", async (req, res) => {
 
     await db.update(leaguesTable).set({ status: "drafting" }).where(eq(leaguesTable.id, leagueId));
 
-    res.json({
+    return res.json({
       leagueId: state.leagueId,
       status: state.status,
       currentOverallPick: state.currentOverallPick,
@@ -102,7 +102,7 @@ router.post("/leagues/:leagueId/draft/start", async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, "Failed to start draft");
-    res.status(500).json({ error: "Failed to start draft" });
+    return res.status(500).json({ error: "Failed to start draft" });
   }
 });
 
@@ -116,7 +116,7 @@ router.post("/leagues/:leagueId/draft/pause", async (req, res) => {
     const newStatus = state.status === "active" ? "paused" : "active";
     const [updated] = await db.update(draftStateTable).set({ status: newStatus, updatedAt: new Date() }).where(eq(draftStateTable.leagueId, leagueId)).returning();
 
-    res.json({
+    return res.json({
       leagueId: updated.leagueId,
       status: updated.status,
       currentOverallPick: updated.currentOverallPick,
@@ -129,7 +129,7 @@ router.post("/leagues/:leagueId/draft/pause", async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, "Failed to pause draft");
-    res.status(500).json({ error: "Failed to pause draft" });
+    return res.status(500).json({ error: "Failed to pause draft" });
   }
 });
 
@@ -147,7 +147,7 @@ router.get("/leagues/:leagueId/draft/board", async (req, res) => {
       .where(eq(picksTable.leagueId, leagueId))
       .orderBy(asc(picksTable.overallPick));
 
-    res.json({
+    return res.json({
       leagueId,
       rounds: league.numRounds,
       teams: teams.map(t => ({
@@ -201,7 +201,7 @@ router.get("/leagues/:leagueId/draft/board", async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, "Failed to get draft board");
-    res.status(500).json({ error: "Failed to get draft board" });
+    return res.status(500).json({ error: "Failed to get draft board" });
   }
 });
 
@@ -309,10 +309,10 @@ router.get("/leagues/:leagueId/draft/recommendations", async (req, res) => {
       ? `Round ${state?.currentRound ?? 1}, Pick ${currentPick} — ${pickPhase} draft phase. ${needPositions.length > 0 ? `Prioritize ${needPositions.slice(0, 2).join(", ")}. ` : "Roster balance is good. "}Top available players cluster around the ${top5[0]?.position ?? "skill"} position.`
       : "Waiting for draft to begin.";
 
-    res.json({ teamId, analysis, recommendations: recommendations.slice(0, 5) });
+    return res.json({ teamId, analysis, recommendations: recommendations.slice(0, 5) });
   } catch (err) {
     logger.error({ err }, "Failed to get draft recommendations");
-    res.status(500).json({ error: "Failed to get draft recommendations" });
+    return res.status(500).json({ error: "Failed to get draft recommendations" });
   }
 });
 
@@ -362,10 +362,10 @@ router.get("/leagues/:leagueId/draft/grades", async (req, res) => {
       return { teamId: team.id, teamName: team.name, overallGrade, gradeScore, summary, positionalGrades };
     }));
 
-    res.json(grades);
+    return res.json(grades);
   } catch (err) {
     logger.error({ err }, "Failed to get draft grades");
-    res.status(500).json({ error: "Failed to get draft grades" });
+    return res.status(500).json({ error: "Failed to get draft grades" });
   }
 });
 
@@ -390,10 +390,10 @@ router.get("/leagues/:leagueId/draft/activity", async (req, res) => {
       timestamp: pick.createdAt.toISOString(),
     }));
 
-    res.json(items);
+    return res.json(items);
   } catch (err) {
     logger.error({ err }, "Failed to get draft activity");
-    res.status(500).json({ error: "Failed to get draft activity" });
+    return res.status(500).json({ error: "Failed to get draft activity" });
   }
 });
 
@@ -426,10 +426,10 @@ router.get("/leagues/:leagueId/draft/position-scarcity", async (req, res) => {
       return { position, totalAvailable: total, top10Available: top10, top20Available: top20, scarcityLevel };
     });
 
-    res.json(scarcity);
+    return res.json(scarcity);
   } catch (err) {
     logger.error({ err }, "Failed to get position scarcity");
-    res.status(500).json({ error: "Failed to get position scarcity" });
+    return res.status(500).json({ error: "Failed to get position scarcity" });
   }
 });
 

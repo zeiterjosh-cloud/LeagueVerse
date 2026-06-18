@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Plus, Users, Clock, Settings, RefreshCw } from "lucide-react";
+import { Trophy, Plus, Users, Clock, Settings, RefreshCw, LayoutDashboard, Swords } from "lucide-react";
 import { SyncLeagueModal } from "@/components/SyncLeagueModal";
 
 export default function Home() {
@@ -35,6 +35,42 @@ export default function Home() {
         </div>
       </div>
       <SyncLeagueModal open={syncOpen} onOpenChange={setSyncOpen} />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <Link href="/dashboard">
+          <Card className="bg-card/60 hover:border-primary/50 transition-colors cursor-pointer">
+            <CardContent className="p-5 flex items-center gap-4">
+              <LayoutDashboard className="h-8 w-8 text-primary" />
+              <div>
+                <div className="font-heading text-xl uppercase">Dashboard</div>
+                <div className="text-sm text-muted-foreground">League command overview</div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/leagues/1/draft">
+          <Card className="bg-card/60 hover:border-primary/50 transition-colors cursor-pointer">
+            <CardContent className="p-5 flex items-center gap-4">
+              <Swords className="h-8 w-8 text-primary" />
+              <div>
+                <div className="font-heading text-xl uppercase">Draft Board</div>
+                <div className="text-sm text-muted-foreground">Enter the live draft room</div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <button type="button" className="text-left" onClick={() => setSyncOpen(true)}>
+          <Card className="h-full bg-card/60 hover:border-primary/50 transition-colors cursor-pointer">
+            <CardContent className="p-5 flex items-center gap-4">
+              <RefreshCw className="h-8 w-8 text-primary" />
+              <div>
+                <div className="font-heading text-xl uppercase">Sync League</div>
+                <div className="text-sm text-muted-foreground">Import from Sleeper, ESPN, or Yahoo</div>
+              </div>
+            </CardContent>
+          </Card>
+        </button>
+      </div>
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

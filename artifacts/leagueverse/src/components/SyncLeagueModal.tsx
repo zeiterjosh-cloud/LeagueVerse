@@ -200,6 +200,12 @@ export function SyncLeagueModal({ open, onOpenChange }: SyncLeagueModalProps) {
         if (data.setup) setYahooNotConfigured(true);
         throw new Error(data.error ?? "Yahoo not available");
       }
+      if (data.mock) {
+        setYahooState(data.state);
+        setYahooReady(true);
+        await fetchYahooLeagues(data.state);
+        return;
+      }
       setYahooState(data.state);
       const popup = window.open(data.authUrl, "yahoo-auth", "width=600,height=700,left=200,top=100");
       if (!popup) throw new Error("Popup blocked — please allow popups for this site");

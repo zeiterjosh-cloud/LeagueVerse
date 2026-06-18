@@ -78,10 +78,10 @@ router.get("/sync/sleeper/user/:username", async (req, res) => {
     if (!r.ok) return res.status(404).json({ error: "Sleeper user not found" });
     const u = await r.json() as Record<string, unknown>;
     if (!u?.user_id) return res.status(404).json({ error: "Sleeper user not found" });
-    res.json({ userId: u.user_id, username: u.username, displayName: u.display_name, avatar: u.avatar });
+    return res.json({ userId: u.user_id, username: u.username, displayName: u.display_name, avatar: u.avatar });
   } catch (err) {
     logger.error({ err }, "Sleeper user lookup failed");
-    res.status(500).json({ error: "Failed to reach Sleeper API" });
+    return res.status(500).json({ error: "Failed to reach Sleeper API" });
   }
 });
 
@@ -101,10 +101,10 @@ router.get("/sync/sleeper/leagues/:userId/:season", async (req, res) => {
       status: l["status"] === "drafting" ? "drafting" : "predraft",
       season: l["season"],
     }));
-    res.json(mapped);
+    return res.json(mapped);
   } catch (err) {
     logger.error({ err }, "Sleeper leagues fetch failed");
-    res.status(500).json({ error: "Failed to fetch Sleeper leagues" });
+    return res.status(500).json({ error: "Failed to fetch Sleeper leagues" });
   }
 });
 
@@ -174,10 +174,10 @@ router.post("/sync/sleeper/import", async (req, res) => {
 
     if (teams.length > 0) await db.insert(teamsTable).values(teams);
 
-    res.json({ ...formatLeague(league), teamsImported: teams.length });
+    return res.json({ ...formatLeague(league), teamsImported: teams.length });
   } catch (err) {
     logger.error({ err }, "Sleeper import failed");
-    res.status(500).json({ error: "Failed to import Sleeper league" });
+    return res.status(500).json({ error: "Failed to import Sleeper league" });
   }
 });
 
@@ -213,7 +213,7 @@ router.get("/sync/espn/league", async (req, res) => {
       draftPosition: (t["draftDayProjectedRank"] as number) ?? i + 1,
     }));
 
-    res.json({
+    return res.json({
       externalId: String(leagueId),
       name: (settings["name"] as string) ?? `ESPN League ${leagueId}`,
       numTeams: (settings["size"] as number) ?? teams.length ?? 10,
@@ -224,7 +224,7 @@ router.get("/sync/espn/league", async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, "ESPN league fetch failed");
-    res.status(500).json({ error: "Failed to reach ESPN Fantasy API" });
+    return res.status(500).json({ error: "Failed to reach ESPN Fantasy API" });
   }
 });
 
@@ -281,10 +281,10 @@ router.post("/sync/espn/import", async (req, res) => {
     });
 
     if (teams.length > 0) await db.insert(teamsTable).values(teams);
-    res.json({ ...formatLeague(league), teamsImported: teams.length });
+    return res.json({ ...formatLeague(league), teamsImported: teams.length });
   } catch (err) {
     logger.error({ err }, "ESPN import failed");
-    res.status(500).json({ error: "Failed to import ESPN league" });
+    return res.status(500).json({ error: "Failed to import ESPN league" });
   }
 });
 
@@ -313,7 +313,7 @@ router.get("/sync/yahoo/auth", (req, res) => {
   authUrl.searchParams.set("scope", "fspt-r");
   authUrl.searchParams.set("state", state);
 
-  res.json({ authUrl: authUrl.toString(), state });
+  return res.json({ authUrl: authUrl.toString(), state });
 });
 
 router.get("/sync/yahoo/callback", async (req, res) => {
@@ -347,11 +347,11 @@ router.get("/sync/yahoo/callback", async (req, res) => {
 
     const tokens = await tokenResp.json() as Record<string, string>;
     yahooOAuthStore.set(state, { accessToken: tokens["access_token"], createdAt: Date.now() });
-    res.send(closePopupHtml(true, state));
+    return res.send(closePopupHtml(true, state));
   } catch (err) {
     logger.error({ err }, "Yahoo OAuth callback failed");
     yahooOAuthStore.set(state, { error: "OAuth callback failed", createdAt: Date.now() });
-    res.send(closePopupHtml(false, "OAuth callback failed"));
+    return res.send(closePopupHtml(false, "OAuth callback failed"));
   }
 });
 
@@ -395,7 +395,7 @@ router.get("/sync/yahoo/leagues/:state", async (req, res) => {
       }
     }
 
-    res.json(leaguesRaw.map((l) => ({
+    return res.json(leaguesRaw.map((l) => ({
       externalId: l["league_key"],
       name: l["name"],
       numTeams: parseInt(String(l["num_teams"])) || 10,
@@ -405,7 +405,7 @@ router.get("/sync/yahoo/leagues/:state", async (req, res) => {
     })));
   } catch (err) {
     logger.error({ err }, "Yahoo leagues fetch failed");
-    res.status(500).json({ error: "Failed to fetch Yahoo leagues" });
+    return res.status(500).json({ error: "Failed to fetch Yahoo leagues" });
   }
 });
 
@@ -460,7 +460,7 @@ router.post("/sync/yahoo/import", async (req, res) => {
     await db.delete(teamsTable).where(eq(teamsTable.leagueId, league.id));
 
     const teams = teamsArr.map((t, i) => {
-      const tArr = t as unknown[];
+      const tArr = t as unknown as unknown[];
       const nameEntry = Array.isArray(tArr) ? (tArr as Record<string, unknown>[]).find((x) => x?.["name"]) : null;
       return {
         leagueId: league.id,
@@ -471,10 +471,10 @@ router.post("/sync/yahoo/import", async (req, res) => {
     });
 
     if (teams.length > 0) await db.insert(teamsTable).values(teams);
-    res.json({ ...formatLeague(league), teamsImported: teams.length });
+    return res.json({ ...formatLeague(league), teamsImported: teams.length });
   } catch (err) {
     logger.error({ err }, "Yahoo import failed");
-    res.status(500).json({ error: "Failed to import Yahoo league" });
+    return res.status(500).json({ error: "Failed to import Yahoo league" });
   }
 });
 

@@ -15,10 +15,10 @@ router.get("/leagues/:leagueId/picks", async (req, res) => {
       .where(eq(picksTable.leagueId, leagueId))
       .orderBy(asc(picksTable.overallPick));
 
-    res.json(picks.map(({ pick, player, team }) => formatPick(pick, player, team)));
+    return res.json(picks.map(({ pick, player, team }) => formatPick(pick, player, team)));
   } catch (err) {
     logger.error({ err }, "Failed to list picks");
-    res.status(500).json({ error: "Failed to list picks" });
+    return res.status(500).json({ error: "Failed to list picks" });
   }
 });
 
@@ -113,10 +113,10 @@ router.post("/leagues/:leagueId/picks", async (req, res) => {
     const [pickedPlayer] = await db.select().from(playersTable).where(eq(playersTable.id, pick.playerId));
     const [pickedTeam] = await db.select().from(teamsTable).where(eq(teamsTable.id, pick.teamId));
 
-    res.status(201).json(formatPick(pick, pickedPlayer, pickedTeam));
+    return res.status(201).json(formatPick(pick, pickedPlayer, pickedTeam));
   } catch (err) {
     logger.error({ err }, "Failed to make pick");
-    res.status(500).json({ error: "Failed to make pick" });
+    return res.status(500).json({ error: "Failed to make pick" });
   }
 });
 
@@ -130,10 +130,10 @@ router.get("/leagues/:leagueId/picks/:pickId", async (req, res) => {
       .innerJoin(teamsTable, eq(picksTable.teamId, teamsTable.id))
       .where(and(eq(picksTable.id, pickId), eq(picksTable.leagueId, leagueId)));
     if (!result) return res.status(404).json({ error: "Pick not found" });
-    res.json(formatPick(result.pick, result.player, result.team));
+    return res.json(formatPick(result.pick, result.player, result.team));
   } catch (err) {
     logger.error({ err }, "Failed to get pick");
-    res.status(500).json({ error: "Failed to get pick" });
+    return res.status(500).json({ error: "Failed to get pick" });
   }
 });
 
