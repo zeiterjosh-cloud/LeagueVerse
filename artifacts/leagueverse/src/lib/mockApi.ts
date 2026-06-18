@@ -1,3 +1,5 @@
+import { getDefaultWalkUpSongUrl, isPlayableAudioUrl, walkUpSongOptions } from "@/lib/walkUpSongs";
+
 type LeagueStatus = "setup" | "predraft" | "drafting" | "completed";
 type PlayerPosition = "QB" | "RB" | "WR" | "TE" | "K" | "DEF";
 
@@ -90,7 +92,7 @@ const jsonHeaders = { "content-type": "application/json" };
 let installed = false;
 
 const now = new Date("2026-08-20T20:00:00.000Z").toISOString();
-const walkUpSongs = ["Thunderstruck", "Lose Yourself", "Seven Nation Army", "All I Do Is Win", "Power", "Can't Hold Us"];
+const walkUpSongs = walkUpSongOptions.map((song) => song.title);
 const draftPersonalities = ["Value Hunter", "Chaos Trader", "Zero RB Prophet", "Upside Chaser", "Roster Architect", "Risk Merchant"];
 const rivalryLines = ["End Zone Empire", "Gridiron Galaxy", "Blitz Brigade", "Waiver Wire Wizards", "Fourth Down Force", "Sunday Savants"];
 const championshipLines = ["2023 Finalist, 2025 Champ", "2022 Champ", "Back-to-back semifinalist", "2024 Consolation King", "Three playoff byes", "Expansion-era icon"];
@@ -154,7 +156,7 @@ const seedTeams: Team[] = [
   slogan,
   bannerUrl: `linear:${primaryColor}`,
   record,
-  walkUpSongUrl: `mock://${String(walkUpSong).toLowerCase().replaceAll(" ", "-")}`,
+  walkUpSongUrl: getDefaultWalkUpSongUrl(String(walkUpSong)),
   soundEffectUrl: "mock://stadium-hit",
   draftPersonality: draftPersonalities[index % draftPersonalities.length],
   rivalries: rivalryLines[index % rivalryLines.length],
@@ -262,7 +264,7 @@ function createImportedLeague(state: MockState, platform: keyof typeof syncLeagu
     draftPosition: index + 1,
     logoUrl: `${platform[0].toUpperCase()}${index + 1}`,
     walkUpSong: walkUpSongs[index % walkUpSongs.length],
-    walkUpSongUrl: `mock://${walkUpSongs[index % walkUpSongs.length].toLowerCase().replaceAll(" ", "-")}`,
+    walkUpSongUrl: getDefaultWalkUpSongUrl(walkUpSongs[index % walkUpSongs.length]),
     soundEffectUrl: "mock://airhorn",
     draftPersonality: draftPersonalities[index % draftPersonalities.length],
     rivalries: `Imported rival ${index + 1}`,
@@ -277,12 +279,24 @@ function createImportedLeague(state: MockState, platform: keyof typeof syncLeagu
   return { ...league, teamsImported: importedTeams.length };
 }
 
+function migrateWalkUpAudioUrls(state: MockState) {
+  let changed = false;
+  state.teams = state.teams.map((team) => {
+    if (isPlayableAudioUrl(team.walkUpSongUrl)) return team;
+    if (!team.walkUpSong) return team;
+    changed = true;
+    return { ...team, walkUpSongUrl: getDefaultWalkUpSongUrl(team.walkUpSong) };
+  });
+  if (changed) writeState(state);
+  return state;
+}
+
 function readState(): MockState {
   const stored = window.localStorage.getItem(storageKey);
   if (!stored) return createInitialState();
 
   try {
-    return JSON.parse(stored) as MockState;
+    return migrateWalkUpAudioUrls(JSON.parse(stored) as MockState);
   } catch {
     return createInitialState();
   }
@@ -509,7 +523,9 @@ async function handleApi(input: RequestInfo | URL, init?: RequestInit): Promise<
       createdAt: new Date().toISOString(),
     };
 
-    const newTeams = Array.from({ length: Math.min(newLeague.numTeams, 12) }, (_, index) => ({
+    const newTeams = Array.from({ length: Math.min(newLeague.numTeams, 12) }, (_, index) => {
+      const walkUpSong = walkUpSongs[index % walkUpSongs.length];
+      return ({
       id: Math.max(...state.teams.map((item) => item.id), 0) + index + 1,
       leagueId: id,
       name: `Team ${index + 1}`,
@@ -522,17 +538,18 @@ async function handleApi(input: RequestInfo | URL, init?: RequestInit): Promise<
       slogan: "Build the board",
       bannerUrl: "linear:#16a34a",
       record: "0-0",
-      walkUpSongUrl: null,
+      walkUpSongUrl: getDefaultWalkUpSongUrl(walkUpSong),
       soundEffectUrl: null,
       draftPersonality: draftPersonalities[index % draftPersonalities.length],
       rivalries: "TBD",
       championshipHistory: "New franchise",
       draftPosition: index + 1,
       logoUrl: null,
-      walkUpSong: null,
+      walkUpSong,
       primaryColor: null,
       createdAt: new Date().toISOString(),
-    }));
+    });
+    });
 
     state.leagues.push(newLeague);
     state.teams.push(...newTeams);

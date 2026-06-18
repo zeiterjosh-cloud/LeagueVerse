@@ -7,11 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Award, Crown, Flame, Medal, Music2, Radio, Shield, Swords, Trophy, UserRound, Volume2, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMemo, useState } from "react";
 import { ownerLegacyScore, useLeagueLegacy } from "@/lib/legacyData";
+import { filterWalkUpSongs, getDefaultWalkUpSongUrl, getWalkUpSongLabel, isPlayableAudioUrl, playWalkUpPreview, walkUpSongCategories, type WalkUpSongCategoryFilter } from "@/lib/walkUpSongs";
 
 type OwnerTeam = {
   id: number;
@@ -54,7 +56,10 @@ export default function OwnerProfile() {
   const { data: teamsData } = useListTeams(1, { query: { queryKey: getListTeamsQueryKey(1) } });
   const team = (teamData && "id" in teamData ? teamData : (teamsData as OwnerTeam[] | undefined)?.find((item) => item.id === profileId)) as OwnerTeam | undefined;
   const [draft, setDraft] = useState<Partial<OwnerTeam>>({});
+  const [songFilter, setSongFilter] = useState<WalkUpSongCategoryFilter>("All");
+  const [songSearch, setSongSearch] = useState("");
   const current = useMemo(() => ({ ...team, ...draft }) as OwnerTeam | undefined, [draft, team]);
+  const filteredSongs = filterWalkUpSongs(songFilter, songSearch);
   const legacyOwner = legacy.owners.find((owner) => owner.id === profileId);
   const ownerTrophies = legacy.trophies.filter((trophy) => trophy.teamId === profileId);
   const ownerHistory = legacy.history.filter((event) => event.teamId === profileId);
@@ -161,7 +166,9 @@ export default function OwnerProfile() {
               <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent)]" />
               <div className="absolute bottom-5 left-5">
                 <div className="font-heading text-4xl">Walk-Up Tunnel Ready</div>
-                <div className="text-purple-100"><Radio className="mr-2 inline h-4 w-4" /> {current.walkUpSongUrl ?? "mock://walk-up"} · <Volume2 className="mx-2 inline h-4 w-4" /> {current.soundEffectUrl ?? "mock://sfx"}</div>
+                <div className="text-purple-100">
+                  <Radio className="mr-2 inline h-4 w-4" /> {isPlayableAudioUrl(current.walkUpSongUrl) ? "Actual song preview ready" : "Safe demo preview"} · <Volume2 className="mx-2 inline h-4 w-4" /> {current.soundEffectUrl ?? "mock://sfx"}
+                </div>
               </div>
             </div>
           </Card>
@@ -268,7 +275,45 @@ export default function OwnerProfile() {
               <div className="space-y-1"><Label>Draft Personality</Label><Input value={current.draftPersonality ?? ""} onChange={(event) => setDraft({ ...draft, draftPersonality: event.target.value })} /></div>
               <div className="space-y-1"><Label>Rivalries</Label><Input value={current.rivalries ?? ""} onChange={(event) => setDraft({ ...draft, rivalries: event.target.value })} /></div>
               <div className="space-y-1"><Label>Championship History</Label><Input value={current.championshipHistory ?? ""} onChange={(event) => setDraft({ ...draft, championshipHistory: event.target.value })} /></div>
-              <div className="space-y-1"><Label>Walk-Up Song URL</Label><Input value={current.walkUpSongUrl ?? ""} onChange={(event) => setDraft({ ...draft, walkUpSongUrl: event.target.value })} /></div>
+              <div className="space-y-1 col-span-2">
+                <Label>Walk-Up Song</Label>
+                <div className="grid gap-2 sm:grid-cols-[160px_1fr]">
+                  <Select value={songFilter} onValueChange={(value) => setSongFilter(value as WalkUpSongCategoryFilter)}>
+                    <SelectTrigger><SelectValue placeholder="Filter by" /></SelectTrigger>
+                    <SelectContent>{walkUpSongCategories.map((category) => <SelectItem key={category} value={category}>Filter by {category}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Input placeholder="Search song, artist, or vibe..." value={songSearch} onChange={(event) => setSongSearch(event.target.value)} />
+                </div>
+                <Select value={current.walkUpSong ?? "Thunderstruck"} onValueChange={(value) => setDraft({ ...draft, walkUpSong: value, walkUpSongUrl: getDefaultWalkUpSongUrl(value) })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {filteredSongs.map((song) => (
+                      <SelectItem key={song.title} value={song.title}>{song.title} - {song.artist} · {song.vibe}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {filteredSongs.slice(0, 6).map((song) => (
+                    <button
+                      key={song.title}
+                      type="button"
+                      onClick={() => setDraft({ ...draft, walkUpSong: song.title, walkUpSongUrl: song.previewUrl ?? current.walkUpSongUrl })}
+                      className={`rounded-lg border p-3 text-left transition hover:border-primary hover:bg-primary/10 ${current.walkUpSong === song.title ? "border-primary bg-primary/10" : "border-border bg-background/60"}`}
+                    >
+                      <div className="font-heading text-lg">{song.title}</div>
+                      <div className="text-xs text-muted-foreground">{song.artist} · {song.category} · {song.vibe}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-xs text-muted-foreground">Selected: {getWalkUpSongLabel(current.walkUpSong)}</div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => void playWalkUpPreview(current.walkUpSong, current.walkUpSongUrl)} className="font-heading uppercase">
+                    <Volume2 className="mr-2 h-4 w-4" /> Preview Demo
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1 col-span-2"><Label>Actual Song Preview URL</Label><Input placeholder="https://.../preview.mp3" value={current.walkUpSongUrl ?? ""} onChange={(event) => setDraft({ ...draft, walkUpSongUrl: event.target.value })} /></div>
+              <div className="text-xs text-purple-200/75 col-span-2">{isPlayableAudioUrl(current.walkUpSongUrl) ? "The draft tunnel will play this real audio after Play Walk-Up is clicked." : "No playable URL yet, so LeagueVerse will use a safe demo preview."}</div>
               <div className="space-y-1"><Label>Sound Effect URL</Label><Input value={current.soundEffectUrl ?? ""} onChange={(event) => setDraft({ ...draft, soundEffectUrl: event.target.value })} /></div>
             </div>
             <div className="space-y-1"><Label>Bio</Label><Textarea value={current.bio ?? ""} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} /></div>

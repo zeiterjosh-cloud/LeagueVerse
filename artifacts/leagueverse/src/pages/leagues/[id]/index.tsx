@@ -12,29 +12,12 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Play, Activity, Users, Settings, Music2, Volume2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-const walkUpSongs = ["Thunderstruck", "Lose Yourself", "Seven Nation Army", "All I Do Is Win", "Power", "Can't Hold Us"];
+import { filterWalkUpSongs, getDefaultWalkUpSongUrl, isPlayableAudioUrl, playWalkUpPreview, walkUpSongCategories, type WalkUpSongCategoryFilter } from "@/lib/walkUpSongs";
+import { useState } from "react";
 
 function initials(name?: string | null) {
   if (!name) return "LV";
   return name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
-}
-
-function playPreview() {
-  const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioContextClass) return;
-  const context = new AudioContextClass();
-  [146, 196, 246, 329].forEach((frequency, index) => {
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = "sawtooth";
-    oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.05, context.currentTime + index * 0.14);
-    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + index * 0.14 + 0.12);
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start(context.currentTime + index * 0.14);
-    oscillator.stop(context.currentTime + index * 0.14 + 0.12);
-  });
 }
 
 export default function LeagueOverview() {
@@ -42,6 +25,9 @@ export default function LeagueOverview() {
   const leagueId = Number(id);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [songFilter, setSongFilter] = useState<WalkUpSongCategoryFilter>("All");
+  const [songSearch, setSongSearch] = useState("");
+  const filteredSongs = filterWalkUpSongs(songFilter, songSearch);
   
   const { data: league, isLoading: leagueLoading } = useGetLeague(leagueId, {
     query: { enabled: !!leagueId, queryKey: getGetLeagueQueryKey(leagueId) }
@@ -65,7 +51,7 @@ export default function LeagueOverview() {
     await fetch(`/api/leagues/${leagueId}/teams/${teamId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ walkUpSong }),
+      body: JSON.stringify({ walkUpSong, walkUpSongUrl: getDefaultWalkUpSongUrl(walkUpSong) }),
     });
     await queryClient.invalidateQueries({ queryKey: getListTeamsQueryKey(leagueId) });
     toast({ title: "Walk-up music saved", description: `${walkUpSong} is queued for draft night.` });
@@ -110,8 +96,22 @@ export default function LeagueOverview() {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              <div className="mb-4 grid gap-2 md:grid-cols-[190px_1fr]">
+                <Select value={songFilter} onValueChange={(value) => setSongFilter(value as WalkUpSongCategoryFilter)}>
+                  <SelectTrigger className="bg-background/70"><SelectValue placeholder="Filter by" /></SelectTrigger>
+                  <SelectContent>{walkUpSongCategories.map((category) => <SelectItem key={category} value={category}>Filter by {category}</SelectItem>)}</SelectContent>
+                </Select>
+                <input
+                  className="h-10 rounded-md border border-input bg-background/70 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  placeholder="Search popular songs, artists, or vibe..."
+                  value={songSearch}
+                  onChange={(event) => setSongSearch(event.target.value)}
+                />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {teams?.map(team => (
+                {teams?.map(team => {
+                  const walkUpSongUrl = (team as typeof team & { walkUpSongUrl?: string | null }).walkUpSongUrl;
+                  return (
                   <div key={team.id} className="p-4 rounded-lg bg-card/50 border border-border hover:border-primary/50 transition-colors group">
                     <div className="flex items-center gap-4">
                       <Link href={`/leagues/${leagueId}/teams/${team.id}`}>
@@ -133,15 +133,18 @@ export default function LeagueOverview() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {walkUpSongs.map((song) => <SelectItem key={song} value={song}>{song}</SelectItem>)}
+                          {filteredSongs.map((song) => <SelectItem key={song.title} value={song.title}>{song.title} - {song.artist}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                      <Button type="button" variant="outline" size="icon" onClick={playPreview} aria-label="Preview walk-up song">
+                      <Button type="button" variant="outline" size="icon" onClick={() => void playWalkUpPreview(team.walkUpSong, walkUpSongUrl)} aria-label="Preview walk-up song">
                         <Volume2 className="h-4 w-4" />
                       </Button>
                     </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {isPlayableAudioUrl(walkUpSongUrl) ? "Actual audio URL ready" : "Safe demo preview until a legal song URL is added on the owner profile."}
+                    </div>
                   </div>
-                ))}
+                );})}
               </div>
             </CardContent>
           </Card>

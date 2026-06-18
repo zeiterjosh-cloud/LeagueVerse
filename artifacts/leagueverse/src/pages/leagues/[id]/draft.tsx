@@ -19,15 +19,7 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Activity, AlertTriangle, Bot, Brain, Clock, Crown, Expand, Flame, Maximize2, Megaphone, Music2, Pause, Radio, RotateCcw, Search, ShieldCheck, Sparkles, Star, Swords, Target, Trophy, UserPlus, Volume2, Zap } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-
-const songs = {
-  "Thunderstruck": [130, 164, 196, 246],
-  "Lose Yourself": [110, 147, 220, 294],
-  "Seven Nation Army": [98, 147, 196, 220],
-  "All I Do Is Win": [164, 220, 277, 330],
-  "Power": [123, 185, 247, 370],
-  "Can't Hold Us": [147, 196, 294, 392],
-};
+import { getResolvedWalkUpAudio, isPlayableAudioUrl } from "@/lib/walkUpSongs";
 
 type RevealPick = {
   round: number;
@@ -169,68 +161,9 @@ function postPickReaction(pick: RevealPick) {
   return `${owner} locks in ${pick.player?.name}. Clean fit, fast reaction, grade ${pick.grade}.`;
 }
 
-const demoWalkUpUrls = new Map<string, string>();
-
-function createDemoWalkUpUrl(songName?: string | null) {
-  const key = songName ?? "LeagueVerse Demo";
-  const cached = demoWalkUpUrls.get(key);
-  if (cached) return cached;
-
-  const notes = songs[(songName ?? "") as keyof typeof songs] ?? [146, 196, 246, 329];
-  const sampleRate = 22050;
-  const seconds = 2.4;
-  const sampleCount = Math.floor(sampleRate * seconds);
-  const dataSize = sampleCount * 2;
-  const buffer = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(buffer);
-
-  const writeString = (offset: number, value: string) => {
-    for (let i = 0; i < value.length; i += 1) view.setUint8(offset + i, value.charCodeAt(i));
-  };
-
-  writeString(0, "RIFF");
-  view.setUint32(4, 36 + dataSize, true);
-  writeString(8, "WAVE");
-  writeString(12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeString(36, "data");
-  view.setUint32(40, dataSize, true);
-
-  for (let i = 0; i < sampleCount; i += 1) {
-    const t = i / sampleRate;
-    const noteIndex = Math.min(notes.length - 1, Math.floor((t / seconds) * notes.length));
-    const frequency = notes[noteIndex] ?? 220;
-    const envelope = Math.min(1, t * 8) * Math.max(0, 1 - t / seconds);
-    const tone = Math.sin(2 * Math.PI * frequency * t) + 0.35 * Math.sin(2 * Math.PI * frequency * 2 * t);
-    const pulse = Math.sin(2 * Math.PI * 2.5 * t) > -0.35 ? 1 : 0.45;
-    const sample = Math.max(-1, Math.min(1, tone * envelope * pulse * 0.28));
-    view.setInt16(44 + i * 2, sample * 32767, true);
-  }
-
-  const url = URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
-  demoWalkUpUrls.set(key, url);
-  return url;
-}
-
-function isPlayableAudioUrl(url?: string | null) {
-  return !!url && /^(https?:\/\/|data:audio\/|blob:)/i.test(url);
-}
-
 function getWalkUpAudioSource(team?: OwnerProfileTeam | null) {
   if (!team) return null;
-  if (isPlayableAudioUrl(team.walkUpSongUrl)) {
-    return { url: team.walkUpSongUrl!, label: "Custom walk-up audio URL" };
-  }
-  if (team.walkUpSong) {
-    return { url: createDemoWalkUpUrl(team.walkUpSong), label: `Safe LeagueVerse demo audio for ${team.walkUpSong}` };
-  }
-  return null;
+  return getResolvedWalkUpAudio(team.walkUpSong, team.walkUpSongUrl);
 }
 
 function playPickRevealSound(firstRound: boolean) {
@@ -405,9 +338,9 @@ export default function DraftBoard() {
     try {
       if (!walkUpAudioRef.current) walkUpAudioRef.current = new Audio();
       walkUpAudioRef.current.pause();
-      walkUpAudioRef.current.currentTime = 0;
       walkUpAudioRef.current.src = source.url;
       walkUpAudioRef.current.volume = 0.8;
+      walkUpAudioRef.current.currentTime = 0;
       await walkUpAudioRef.current.play();
       setAudioStatus(`Playing: ${source.label}`);
     } catch {
