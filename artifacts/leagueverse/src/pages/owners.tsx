@@ -28,7 +28,9 @@ type OwnerTeam = {
   record?: string | null;
   walkUpSong?: string | null;
   walkUpSongUrl?: string | null;
+  audioUrl?: string | null;
   soundEffectUrl?: string | null;
+  soundEffect?: string | null;
   draftPersonality?: string | null;
   rivalries?: string | null;
   championshipHistory?: string | null;
@@ -59,10 +61,20 @@ export default function Owners() {
   };
 
   const save = async (team: OwnerTeam) => {
+    const savedSong = draft.walkUpSong ?? team.walkUpSong ?? "Thunderstruck";
+    const savedAudioUrl = draft.walkUpSongUrl ?? draft.audioUrl ?? team.walkUpSongUrl ?? team.audioUrl ?? getDefaultWalkUpSongUrl(savedSong);
+    const savedSoundEffect = draft.soundEffectUrl ?? draft.soundEffect ?? team.soundEffectUrl ?? team.soundEffect ?? null;
     await fetch(`/api/leagues/${team.leagueId}/teams/${team.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draft),
+      body: JSON.stringify({
+        ...draft,
+        walkUpSong: savedSong,
+        walkUpSongUrl: savedAudioUrl,
+        audioUrl: savedAudioUrl,
+        soundEffectUrl: savedSoundEffect,
+        soundEffect: savedSoundEffect,
+      }),
     });
     setEditingId(null);
     setDraft({});
@@ -138,8 +150,8 @@ export default function Owners() {
 
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline" className="border-primary/40"><Music2 className="mr-1 h-3 w-3" /> {current.walkUpSong ?? "No song"}</Badge>
-                  <Badge variant="outline"><Upload className="mr-1 h-3 w-3" /> {isPlayableAudioUrl(current.walkUpSongUrl) ? "Real audio URL ready" : "Demo preview"}</Badge>
-                  <Badge variant="outline"><Shield className="mr-1 h-3 w-3" /> {current.soundEffectUrl ?? "mock://effect"}</Badge>
+                  <Badge variant="outline"><Upload className="mr-1 h-3 w-3" /> {isPlayableAudioUrl(current.walkUpSongUrl ?? current.audioUrl) ? "Real audio URL ready" : "Demo preview"}</Badge>
+                  <Badge variant="outline"><Shield className="mr-1 h-3 w-3" /> {current.soundEffectUrl ?? current.soundEffect ?? "mock://effect"}</Badge>
                 </div>
 
                 <p className="text-sm text-muted-foreground min-h-10">{current.bio ?? "No owner bio yet."}</p>
@@ -171,7 +183,7 @@ export default function Owners() {
                           </Select>
                           <Input placeholder="Search popular songs, artists, or vibe..." value={songSearch} onChange={(event) => setSongSearch(event.target.value)} />
                         </div>
-                        <Select value={draft.walkUpSong ?? current.walkUpSong ?? "Thunderstruck"} onValueChange={(value) => setDraft({ ...draft, walkUpSong: value, walkUpSongUrl: getDefaultWalkUpSongUrl(value) })}>
+                        <Select value={draft.walkUpSong ?? current.walkUpSong ?? "Thunderstruck"} onValueChange={(value) => setDraft({ ...draft, walkUpSong: value, walkUpSongUrl: getDefaultWalkUpSongUrl(value), audioUrl: getDefaultWalkUpSongUrl(value) })}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {filteredSongs.map((song) => (
@@ -184,7 +196,10 @@ export default function Owners() {
                             <button
                               key={song.title}
                               type="button"
-                              onClick={() => setDraft({ ...draft, walkUpSong: song.title, walkUpSongUrl: song.previewUrl ?? draft.walkUpSongUrl ?? current.walkUpSongUrl })}
+                              onClick={() => {
+                                const audioUrl = song.previewUrl ?? draft.walkUpSongUrl ?? draft.audioUrl ?? current.walkUpSongUrl ?? current.audioUrl ?? getDefaultWalkUpSongUrl(song.title);
+                                setDraft({ ...draft, walkUpSong: song.title, walkUpSongUrl: audioUrl, audioUrl });
+                              }}
                               className={`rounded-lg border p-3 text-left transition hover:border-primary hover:bg-primary/10 ${current.walkUpSong === song.title ? "border-primary bg-primary/10" : "border-border bg-background/60"}`}
                             >
                               <div className="font-heading text-lg">{song.title}</div>
@@ -196,14 +211,14 @@ export default function Owners() {
                           <p className="text-xs text-muted-foreground">
                             Popular songs save the title for the broadcast. Paste a legal MP3/audio preview URL below to play the actual song clip.
                           </p>
-                          <Button type="button" variant="outline" size="sm" onClick={() => void playWalkUpPreview(current.walkUpSong, current.walkUpSongUrl)} className="font-heading uppercase">
+                          <Button type="button" variant="outline" size="sm" onClick={() => void playWalkUpPreview(current.walkUpSong, current.walkUpSongUrl ?? current.audioUrl)} className="font-heading uppercase">
                             <Volume2 className="mr-2 h-4 w-4" /> Preview Demo
                           </Button>
                         </div>
                       </div>
-                      <div className="space-y-1 sm:col-span-2"><Label>Actual Song Preview URL</Label><Input placeholder="https://.../preview.mp3" value={draft.walkUpSongUrl ?? ""} onChange={(event) => setDraft({ ...draft, walkUpSongUrl: event.target.value })} /></div>
-                      <div className="text-xs text-purple-200/75 sm:col-span-2">Selected: {getWalkUpSongLabel(current.walkUpSong)} · {isPlayableAudioUrl(current.walkUpSongUrl) ? "actual audio will play on click" : "safe demo preview will play until a URL is added"}</div>
-                      <div className="space-y-1 sm:col-span-2"><Label>Custom Sound Effect URL</Label><Input value={draft.soundEffectUrl ?? ""} onChange={(event) => setDraft({ ...draft, soundEffectUrl: event.target.value })} /></div>
+                      <div className="space-y-1 sm:col-span-2"><Label>Actual Song Preview URL</Label><Input placeholder="https://.../preview.mp3" value={draft.walkUpSongUrl ?? draft.audioUrl ?? ""} onChange={(event) => setDraft({ ...draft, walkUpSongUrl: event.target.value, audioUrl: event.target.value })} /></div>
+                      <div className="text-xs text-purple-200/75 sm:col-span-2">Selected: {getWalkUpSongLabel(current.walkUpSong)} · {isPlayableAudioUrl(current.walkUpSongUrl ?? current.audioUrl) ? "actual audio will play on click" : "safe demo preview will play until a URL is added"}</div>
+                      <div className="space-y-1 sm:col-span-2"><Label>Custom Sound Effect URL</Label><Input value={draft.soundEffectUrl ?? draft.soundEffect ?? ""} onChange={(event) => setDraft({ ...draft, soundEffectUrl: event.target.value, soundEffect: event.target.value })} /></div>
                     </div>
                     <div className="flex gap-2">
                       <Button onClick={() => save(team)} className="font-heading uppercase">Save Profile</Button>

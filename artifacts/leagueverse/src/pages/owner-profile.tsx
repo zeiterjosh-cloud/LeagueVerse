@@ -30,7 +30,9 @@ type OwnerTeam = {
   record?: string | null;
   walkUpSong?: string | null;
   walkUpSongUrl?: string | null;
+  audioUrl?: string | null;
   soundEffectUrl?: string | null;
+  soundEffect?: string | null;
   draftPersonality?: string | null;
   rivalries?: string | null;
   championshipHistory?: string | null;
@@ -67,10 +69,20 @@ export default function OwnerProfile() {
 
   const save = async () => {
     if (!team) return;
+    const savedSong = draft.walkUpSong ?? team.walkUpSong ?? "Thunderstruck";
+    const savedAudioUrl = draft.walkUpSongUrl ?? draft.audioUrl ?? team.walkUpSongUrl ?? team.audioUrl ?? getDefaultWalkUpSongUrl(savedSong);
+    const savedSoundEffect = draft.soundEffectUrl ?? draft.soundEffect ?? team.soundEffectUrl ?? team.soundEffect ?? null;
     await fetch(`/api/leagues/${team.leagueId}/teams/${team.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draft),
+      body: JSON.stringify({
+        ...draft,
+        walkUpSong: savedSong,
+        walkUpSongUrl: savedAudioUrl,
+        audioUrl: savedAudioUrl,
+        soundEffectUrl: savedSoundEffect,
+        soundEffect: savedSoundEffect,
+      }),
     });
     setDraft({});
     await Promise.all([
@@ -167,7 +179,7 @@ export default function OwnerProfile() {
               <div className="absolute bottom-5 left-5">
                 <div className="font-heading text-4xl">Walk-Up Tunnel Ready</div>
                 <div className="text-purple-100">
-                  <Radio className="mr-2 inline h-4 w-4" /> {isPlayableAudioUrl(current.walkUpSongUrl) ? "Actual song preview ready" : "Safe demo preview"} · <Volume2 className="mx-2 inline h-4 w-4" /> {current.soundEffectUrl ?? "mock://sfx"}
+                  <Radio className="mr-2 inline h-4 w-4" /> {isPlayableAudioUrl(current.walkUpSongUrl ?? current.audioUrl) ? "Actual song preview ready" : "Safe demo preview"} · <Volume2 className="mx-2 inline h-4 w-4" /> {current.soundEffectUrl ?? current.soundEffect ?? "mock://sfx"}
                 </div>
               </div>
             </div>
@@ -284,7 +296,7 @@ export default function OwnerProfile() {
                   </Select>
                   <Input placeholder="Search song, artist, or vibe..." value={songSearch} onChange={(event) => setSongSearch(event.target.value)} />
                 </div>
-                <Select value={current.walkUpSong ?? "Thunderstruck"} onValueChange={(value) => setDraft({ ...draft, walkUpSong: value, walkUpSongUrl: getDefaultWalkUpSongUrl(value) })}>
+                <Select value={current.walkUpSong ?? "Thunderstruck"} onValueChange={(value) => setDraft({ ...draft, walkUpSong: value, walkUpSongUrl: getDefaultWalkUpSongUrl(value), audioUrl: getDefaultWalkUpSongUrl(value) })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {filteredSongs.map((song) => (
@@ -297,7 +309,10 @@ export default function OwnerProfile() {
                     <button
                       key={song.title}
                       type="button"
-                      onClick={() => setDraft({ ...draft, walkUpSong: song.title, walkUpSongUrl: song.previewUrl ?? current.walkUpSongUrl })}
+                      onClick={() => {
+                        const audioUrl = song.previewUrl ?? current.walkUpSongUrl ?? current.audioUrl ?? getDefaultWalkUpSongUrl(song.title);
+                        setDraft({ ...draft, walkUpSong: song.title, walkUpSongUrl: audioUrl, audioUrl });
+                      }}
                       className={`rounded-lg border p-3 text-left transition hover:border-primary hover:bg-primary/10 ${current.walkUpSong === song.title ? "border-primary bg-primary/10" : "border-border bg-background/60"}`}
                     >
                       <div className="font-heading text-lg">{song.title}</div>
@@ -307,14 +322,14 @@ export default function OwnerProfile() {
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="text-xs text-muted-foreground">Selected: {getWalkUpSongLabel(current.walkUpSong)}</div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => void playWalkUpPreview(current.walkUpSong, current.walkUpSongUrl)} className="font-heading uppercase">
+                  <Button type="button" variant="outline" size="sm" onClick={() => void playWalkUpPreview(current.walkUpSong, current.walkUpSongUrl ?? current.audioUrl)} className="font-heading uppercase">
                     <Volume2 className="mr-2 h-4 w-4" /> Preview Demo
                   </Button>
                 </div>
               </div>
-              <div className="space-y-1 col-span-2"><Label>Actual Song Preview URL</Label><Input placeholder="https://.../preview.mp3" value={current.walkUpSongUrl ?? ""} onChange={(event) => setDraft({ ...draft, walkUpSongUrl: event.target.value })} /></div>
-              <div className="text-xs text-purple-200/75 col-span-2">{isPlayableAudioUrl(current.walkUpSongUrl) ? "The draft tunnel will play this real audio after Play Walk-Up is clicked." : "No playable URL yet, so LeagueVerse will use a safe demo preview."}</div>
-              <div className="space-y-1"><Label>Sound Effect URL</Label><Input value={current.soundEffectUrl ?? ""} onChange={(event) => setDraft({ ...draft, soundEffectUrl: event.target.value })} /></div>
+              <div className="space-y-1 col-span-2"><Label>Actual Song Preview URL</Label><Input placeholder="https://.../preview.mp3" value={current.walkUpSongUrl ?? current.audioUrl ?? ""} onChange={(event) => setDraft({ ...draft, walkUpSongUrl: event.target.value, audioUrl: event.target.value })} /></div>
+              <div className="text-xs text-purple-200/75 col-span-2">{isPlayableAudioUrl(current.walkUpSongUrl ?? current.audioUrl) ? "The draft tunnel will play this real audio after Play Walk-Up is clicked." : "No playable URL yet, so LeagueVerse will use a safe demo preview."}</div>
+              <div className="space-y-1"><Label>Sound Effect URL</Label><Input value={current.soundEffectUrl ?? current.soundEffect ?? ""} onChange={(event) => setDraft({ ...draft, soundEffectUrl: event.target.value, soundEffect: event.target.value })} /></div>
             </div>
             <div className="space-y-1"><Label>Bio</Label><Textarea value={current.bio ?? ""} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} /></div>
             <Button onClick={save} className="w-full font-heading uppercase">Save Owner Profile</Button>

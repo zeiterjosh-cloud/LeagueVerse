@@ -59,7 +59,9 @@ type OwnerProfileTeam = {
   record?: string | null;
   walkUpSong?: string | null;
   walkUpSongUrl?: string | null;
+  audioUrl?: string | null;
   soundEffectUrl?: string | null;
+  soundEffect?: string | null;
   draftPersonality?: string | null;
   rivalries?: string | null;
   championshipHistory?: string | null;
@@ -163,7 +165,7 @@ function postPickReaction(pick: RevealPick) {
 
 function getWalkUpAudioSource(team?: OwnerProfileTeam | null) {
   if (!team) return null;
-  return getResolvedWalkUpAudio(team.walkUpSong, team.walkUpSongUrl);
+  return getResolvedWalkUpAudio(team.walkUpSong, team.walkUpSongUrl ?? team.audioUrl);
 }
 
 function playPickRevealSound(firstRound: boolean) {
@@ -328,8 +330,27 @@ export default function DraftBoard() {
     return () => window.clearTimeout(timeout);
   }, [onTheClockTeam?.id]);
 
+  useEffect(() => {
+    if (!onTheClockProfile) return;
+    console.log("[LeagueVerse Walk-Up Loaded]", {
+      teamName: onTheClockProfile.name,
+      ownerName: onTheClockProfile.ownerName,
+      storedAudioUrl: onTheClockProfile.walkUpSongUrl ?? onTheClockProfile.audioUrl,
+      selectedSong: onTheClockProfile.walkUpSong,
+      soundEffect: onTheClockProfile.soundEffectUrl ?? onTheClockProfile.soundEffect,
+    });
+  }, [onTheClockProfile?.name, onTheClockProfile?.ownerName, onTheClockProfile?.walkUpSongUrl, onTheClockProfile?.audioUrl, onTheClockProfile?.walkUpSong, onTheClockProfile?.soundEffectUrl, onTheClockProfile?.soundEffect]);
+
   const playWalkUpAudio = async () => {
     const source = getWalkUpAudioSource(onTheClockProfile);
+    const storedAudioUrl = onTheClockProfile?.walkUpSongUrl ?? onTheClockProfile?.audioUrl;
+    console.log("[LeagueVerse Walk-Up]", {
+      teamName: onTheClockProfile?.name,
+      ownerName: onTheClockProfile?.ownerName,
+      storedAudioUrl,
+      selectedSong: onTheClockProfile?.walkUpSong,
+      resolvedAudioUrl: source?.url,
+    });
     if (!source) {
       setAudioStatus("No audio URL exists for this team. Add one on the owner profile or choose a demo walk-up song.");
       return;
@@ -342,7 +363,7 @@ export default function DraftBoard() {
       walkUpAudioRef.current.volume = 0.8;
       walkUpAudioRef.current.currentTime = 0;
       await walkUpAudioRef.current.play();
-      setAudioStatus(`Playing: ${source.label}`);
+      setAudioStatus(`${isPlayableAudioUrl(storedAudioUrl) ? "Playing" : "No stored audio URL; playing fallback"}: ${source.label}`);
     } catch {
       setAudioStatus("Audio could not play. Check that the URL is a playable audio file and click Play Walk-Up again.");
     }
@@ -569,7 +590,7 @@ export default function DraftBoard() {
               <div className="mx-auto mt-6 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
                 <Badge className="justify-center py-2 bg-primary/25 text-primary border border-primary/30">NOW ON THE CLOCK</Badge>
                 <Badge variant="outline" className="justify-center py-2"><Music2 className="mr-2 h-4 w-4" /> {onTheClockProfile.walkUpSong ?? "Walk-up cue"}</Badge>
-                <Badge variant="outline" className="justify-center py-2"><Radio className="mr-2 h-4 w-4" /> {onTheClockProfile.soundEffectUrl ?? "mock://stadium-hit"}</Badge>
+                <Badge variant="outline" className="justify-center py-2"><Radio className="mr-2 h-4 w-4" /> {onTheClockProfile.soundEffectUrl ?? onTheClockProfile.soundEffect ?? "mock://stadium-hit"}</Badge>
               </div>
               <div className="mt-5 flex flex-col items-center gap-2">
                 <Button onClick={playWalkUpAudio} className="font-heading uppercase shadow-[0_0_30px_rgba(168,85,247,0.35)]">
@@ -858,13 +879,13 @@ export default function DraftBoard() {
                 <div className="rounded bg-background/70 border border-border p-2"><span className="text-muted-foreground">Team Banner:</span> {onTheClockProfile?.bannerUrl ?? "mock://banner"}</div>
                 <div className="rounded bg-background/70 border border-border p-2">
                   <span className="text-muted-foreground">Audio:</span>{" "}
-                  {isPlayableAudioUrl(onTheClockProfile?.walkUpSongUrl)
-                    ? onTheClockProfile?.walkUpSongUrl
+                  {isPlayableAudioUrl(onTheClockProfile?.walkUpSongUrl ?? onTheClockProfile?.audioUrl)
+                    ? onTheClockProfile?.walkUpSongUrl ?? onTheClockProfile?.audioUrl
                     : onTheClockProfile?.walkUpSong
-                      ? `Safe demo audio: ${onTheClockProfile.walkUpSong}`
-                      : "No audio URL yet"}
+                      ? `Fallback demo MP3: ${onTheClockProfile.walkUpSong}`
+                      : "Fallback demo MP3: Thunderstruck"}
                 </div>
-                <div className="rounded bg-background/70 border border-border p-2"><span className="text-muted-foreground">SFX:</span> {onTheClockProfile?.soundEffectUrl ?? "mock://sfx"}</div>
+                <div className="rounded bg-background/70 border border-border p-2"><span className="text-muted-foreground">SFX:</span> {onTheClockProfile?.soundEffectUrl ?? onTheClockProfile?.soundEffect ?? "mock://sfx"}</div>
               </div>
             </div>
             <div className="p-4 border-b border-border bg-background/40">

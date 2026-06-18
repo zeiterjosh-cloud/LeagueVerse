@@ -51,7 +51,7 @@ export default function LeagueOverview() {
     await fetch(`/api/leagues/${leagueId}/teams/${teamId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ walkUpSong, walkUpSongUrl: getDefaultWalkUpSongUrl(walkUpSong) }),
+      body: JSON.stringify({ walkUpSong, walkUpSongUrl: getDefaultWalkUpSongUrl(walkUpSong), audioUrl: getDefaultWalkUpSongUrl(walkUpSong) }),
     });
     await queryClient.invalidateQueries({ queryKey: getListTeamsQueryKey(leagueId) });
     toast({ title: "Walk-up music saved", description: `${walkUpSong} is queued for draft night.` });
@@ -110,7 +110,8 @@ export default function LeagueOverview() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {teams?.map(team => {
-                  const walkUpSongUrl = (team as typeof team & { walkUpSongUrl?: string | null }).walkUpSongUrl;
+                  const walkUpSongUrl = (team as typeof team & { walkUpSongUrl?: string | null; audioUrl?: string | null }).walkUpSongUrl
+                    ?? (team as typeof team & { walkUpSongUrl?: string | null; audioUrl?: string | null }).audioUrl;
                   return (
                   <div key={team.id} className="p-4 rounded-lg bg-card/50 border border-border hover:border-primary/50 transition-colors group">
                     <div className="flex items-center gap-4">

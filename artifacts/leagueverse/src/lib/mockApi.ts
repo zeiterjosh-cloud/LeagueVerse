@@ -31,7 +31,9 @@ type Team = {
   bannerUrl?: string | null;
   record?: string | null;
   walkUpSongUrl?: string | null;
+  audioUrl?: string | null;
   soundEffectUrl?: string | null;
+  soundEffect?: string | null;
   draftPersonality?: string | null;
   rivalries?: string | null;
   championshipHistory?: string | null;
@@ -157,7 +159,9 @@ const seedTeams: Team[] = [
   bannerUrl: `linear:${primaryColor}`,
   record,
   walkUpSongUrl: getDefaultWalkUpSongUrl(String(walkUpSong)),
+  audioUrl: getDefaultWalkUpSongUrl(String(walkUpSong)),
   soundEffectUrl: "mock://stadium-hit",
+  soundEffect: "mock://stadium-hit",
   draftPersonality: draftPersonalities[index % draftPersonalities.length],
   rivalries: rivalryLines[index % rivalryLines.length],
   championshipHistory: championshipLines[index % championshipLines.length],
@@ -265,7 +269,9 @@ function createImportedLeague(state: MockState, platform: keyof typeof syncLeagu
     logoUrl: `${platform[0].toUpperCase()}${index + 1}`,
     walkUpSong: walkUpSongs[index % walkUpSongs.length],
     walkUpSongUrl: getDefaultWalkUpSongUrl(walkUpSongs[index % walkUpSongs.length]),
+    audioUrl: getDefaultWalkUpSongUrl(walkUpSongs[index % walkUpSongs.length]),
     soundEffectUrl: "mock://airhorn",
+    soundEffect: "mock://airhorn",
     draftPersonality: draftPersonalities[index % draftPersonalities.length],
     rivalries: `Imported rival ${index + 1}`,
     championshipHistory: index % 3 === 0 ? "Imported league champion" : "Chasing first banner",
@@ -282,13 +288,47 @@ function createImportedLeague(state: MockState, platform: keyof typeof syncLeagu
 function migrateWalkUpAudioUrls(state: MockState) {
   let changed = false;
   state.teams = state.teams.map((team) => {
-    if (isPlayableAudioUrl(team.walkUpSongUrl)) return team;
-    if (!team.walkUpSong) return team;
+    const audioUrl = team.walkUpSongUrl ?? team.audioUrl;
+    const soundEffectUrl = team.soundEffectUrl ?? team.soundEffect ?? null;
+    if (isPlayableAudioUrl(audioUrl) && team.walkUpSongUrl === audioUrl && team.soundEffectUrl === soundEffectUrl) return team;
     changed = true;
-    return { ...team, walkUpSongUrl: getDefaultWalkUpSongUrl(team.walkUpSong) };
+    return {
+      ...team,
+      walkUpSong: team.walkUpSong ?? "Thunderstruck",
+      walkUpSongUrl: isPlayableAudioUrl(audioUrl) ? audioUrl : getDefaultWalkUpSongUrl(team.walkUpSong ?? "Thunderstruck"),
+      audioUrl: isPlayableAudioUrl(audioUrl) ? audioUrl : getDefaultWalkUpSongUrl(team.walkUpSong ?? "Thunderstruck"),
+      soundEffectUrl,
+      soundEffect: soundEffectUrl,
+    };
   });
   if (changed) writeState(state);
   return state;
+}
+
+function normalizeTeamPatch(body: Record<string, unknown>) {
+  const walkUpSong = typeof body.walkUpSong === "string" ? body.walkUpSong : undefined;
+  const incomingAudioUrl = typeof body.audioUrl === "string"
+    ? body.audioUrl
+    : typeof body.walkUpSongUrl === "string"
+      ? body.walkUpSongUrl
+      : undefined;
+  const incomingSoundEffect = typeof body.soundEffect === "string"
+    ? body.soundEffect
+    : typeof body.soundEffectUrl === "string"
+      ? body.soundEffectUrl
+      : undefined;
+  const audioUrl = isPlayableAudioUrl(incomingAudioUrl)
+    ? incomingAudioUrl
+    : walkUpSong
+      ? getDefaultWalkUpSongUrl(walkUpSong)
+      : incomingAudioUrl;
+
+  return {
+    ...body,
+    ...(walkUpSong ? { walkUpSong } : {}),
+    ...(audioUrl ? { walkUpSongUrl: audioUrl, audioUrl } : {}),
+    ...(incomingSoundEffect !== undefined ? { soundEffectUrl: incomingSoundEffect, soundEffect: incomingSoundEffect } : {}),
+  };
 }
 
 function readState(): MockState {
@@ -539,7 +579,9 @@ async function handleApi(input: RequestInfo | URL, init?: RequestInit): Promise<
       bannerUrl: "linear:#16a34a",
       record: "0-0",
       walkUpSongUrl: getDefaultWalkUpSongUrl(walkUpSong),
+      audioUrl: getDefaultWalkUpSongUrl(walkUpSong),
       soundEffectUrl: null,
+      soundEffect: null,
       draftPersonality: draftPersonalities[index % draftPersonalities.length],
       rivalries: "TBD",
       championshipHistory: "New franchise",
@@ -578,7 +620,7 @@ async function handleApi(input: RequestInfo | URL, init?: RequestInit): Promise<
   if (league && segments[3] === "teams" && segments.length === 5 && method === "PATCH") {
     const team = state.teams.find((item) => item.leagueId === leagueId && item.id === teamId);
     if (!team) return json({ error: "Team not found" }, { status: 404 });
-    Object.assign(team, await getBody(input, init));
+    Object.assign(team, normalizeTeamPatch(await getBody(input, init)));
     writeState(state);
     return json(team);
   }

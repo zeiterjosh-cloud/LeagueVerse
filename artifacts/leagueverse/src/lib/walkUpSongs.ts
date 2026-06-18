@@ -139,7 +139,7 @@ export function getResolvedWalkUpAudio(songName?: string | null, customUrl?: str
   const catalogPreviewUrl = getWalkUpSongPreviewUrl(songName);
   if (catalogPreviewUrl) return { url: catalogPreviewUrl, label: `Licensed preview for ${songName}` };
   if (songName) return { url: createDemoWalkUpUrl(songName), label: `Demo preview for ${songName}` };
-  return null;
+  return { url: getDefaultWalkUpSongUrl("Thunderstruck"), label: "Default LeagueVerse demo MP3" };
 }
 
 export async function playWalkUpPreview(songName?: string | null, customUrl?: string | null) {
