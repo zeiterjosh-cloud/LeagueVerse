@@ -658,7 +658,7 @@ async function handleApi(input: RequestInfo | URL, init?: RequestInit): Promise<
 }
 
 export function installMockApi() {
-  if (installed || !import.meta.env.DEV) return;
+  if (installed) return;
   installed = true;
 
   const realFetch = window.fetch.bind(window);

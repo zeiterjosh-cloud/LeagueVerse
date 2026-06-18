@@ -10,6 +10,7 @@ import { SyncLeagueModal } from "@/components/SyncLeagueModal";
 export default function Home() {
   const [syncOpen, setSyncOpen] = useState(false);
   const { data: leagues, isLoading } = useListLeagues({ query: { queryKey: getListLeaguesQueryKey() } });
+  const leagueList = Array.isArray(leagues) ? leagues : [];
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -81,7 +82,7 @@ export default function Home() {
             </Card>
           ))}
         </div>
-      ) : leagues?.length === 0 ? (
+      ) : leagueList.length === 0 ? (
         <Card className="text-center py-20 bg-card/50 border-dashed border-2">
           <CardContent className="flex flex-col items-center">
             <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
@@ -100,7 +101,7 @@ export default function Home() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {leagues?.map((league) => (
+          {leagueList.map((league) => (
             <Card key={league.id} className="hover:border-primary/50 transition-colors bg-card/60 backdrop-blur-sm relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-primary/20 transition-colors" />
               <CardHeader>

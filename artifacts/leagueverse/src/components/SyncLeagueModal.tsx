@@ -154,7 +154,7 @@ export function SyncLeagueModal({ open, onOpenChange }: SyncLeagueModalProps) {
       const r = await fetch(`/api/sync/sleeper/leagues/${userId}/${sleeperSeason}`);
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Failed to fetch leagues");
-      setLeagues(data);
+      setLeagues(Array.isArray(data) ? data : []);
       setStep("leagues");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to fetch leagues");
@@ -236,7 +236,7 @@ export function SyncLeagueModal({ open, onOpenChange }: SyncLeagueModalProps) {
       const r = await fetch(`/api/sync/yahoo/leagues/${state}`);
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Failed to fetch leagues");
-      setLeagues(data);
+      setLeagues(Array.isArray(data) ? data : []);
       setStep("leagues");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to fetch Yahoo leagues");
