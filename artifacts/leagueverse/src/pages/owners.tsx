@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Crown, Flame, Music2, Palette, Shield, Swords, Trophy, Upload, UserRound, Volume2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { filterWalkUpSongs, getDefaultWalkUpSongUrl, getWalkUpSongLabel, isPlayableAudioUrl, playWalkUpPreview, walkUpSongCategories, type WalkUpSongCategoryFilter } from "@/lib/walkUpSongs";
+import { searchSpotifyMetadata } from "@/lib/spotifyMetadata";
 
 type OwnerTeam = {
   id: number;
@@ -31,6 +32,10 @@ type OwnerTeam = {
   audioUrl?: string | null;
   soundEffectUrl?: string | null;
   soundEffect?: string | null;
+  spotifyTitle?: string | null;
+  spotifyArtist?: string | null;
+  spotifyAlbumArt?: string | null;
+  spotifyUrl?: string | null;
   draftPersonality?: string | null;
   rivalries?: string | null;
   championshipHistory?: string | null;
@@ -53,7 +58,9 @@ export default function Owners() {
   const [draft, setDraft] = useState<Partial<OwnerTeam>>({});
   const [songFilter, setSongFilter] = useState<WalkUpSongCategoryFilter>("All");
   const [songSearch, setSongSearch] = useState("");
+  const [spotifySearch, setSpotifySearch] = useState("");
   const filteredSongs = filterWalkUpSongs(songFilter, songSearch);
+  const spotifyResults = searchSpotifyMetadata(spotifySearch || draft.walkUpSong || "");
 
   const startEdit = (team: OwnerTeam) => {
     setEditingId(team.id);
@@ -74,6 +81,10 @@ export default function Owners() {
         audioUrl: savedAudioUrl,
         soundEffectUrl: savedSoundEffect,
         soundEffect: savedSoundEffect,
+        spotifyTitle: draft.spotifyTitle ?? team.spotifyTitle ?? savedSong,
+        spotifyArtist: draft.spotifyArtist ?? team.spotifyArtist ?? null,
+        spotifyAlbumArt: draft.spotifyAlbumArt ?? team.spotifyAlbumArt ?? null,
+        spotifyUrl: draft.spotifyUrl ?? team.spotifyUrl ?? null,
       }),
     });
     setEditingId(null);
@@ -153,6 +164,12 @@ export default function Owners() {
                   <Badge variant="outline"><Upload className="mr-1 h-3 w-3" /> {isPlayableAudioUrl(current.walkUpSongUrl ?? current.audioUrl) ? "Real audio URL ready" : "Demo preview"}</Badge>
                   <Badge variant="outline"><Shield className="mr-1 h-3 w-3" /> {current.soundEffectUrl ?? current.soundEffect ?? "mock://effect"}</Badge>
                 </div>
+                {(current.spotifyTitle || current.spotifyUrl) && (
+                  <div className="rounded-lg border border-green-400/20 bg-green-950/20 p-3 text-sm">
+                    <div className="font-heading uppercase text-green-200">Spotify Metadata</div>
+                    <div className="mt-1">{current.spotifyTitle ?? current.walkUpSong} {current.spotifyArtist ? `- ${current.spotifyArtist}` : ""}</div>
+                  </div>
+                )}
 
                 <p className="text-sm text-muted-foreground min-h-10">{current.bio ?? "No owner bio yet."}</p>
 
@@ -219,6 +236,36 @@ export default function Owners() {
                       <div className="space-y-1 sm:col-span-2"><Label>Actual Song Preview URL</Label><Input placeholder="https://.../preview.mp3" value={draft.walkUpSongUrl ?? draft.audioUrl ?? ""} onChange={(event) => setDraft({ ...draft, walkUpSongUrl: event.target.value, audioUrl: event.target.value })} /></div>
                       <div className="text-xs text-purple-200/75 sm:col-span-2">Selected: {getWalkUpSongLabel(current.walkUpSong)} · {isPlayableAudioUrl(current.walkUpSongUrl ?? current.audioUrl) ? "actual audio will play on click" : "safe demo preview will play until a URL is added"}</div>
                       <div className="space-y-1 sm:col-span-2"><Label>Custom Sound Effect URL</Label><Input value={draft.soundEffectUrl ?? draft.soundEffect ?? ""} onChange={(event) => setDraft({ ...draft, soundEffectUrl: event.target.value, soundEffect: event.target.value })} /></div>
+                      <div className="space-y-2 sm:col-span-2 rounded-lg border border-green-400/20 bg-green-950/20 p-3">
+                        <Label>Spotify Metadata Search</Label>
+                        <Input placeholder="Search Spotify title or artist..." value={spotifySearch} onChange={(event) => setSpotifySearch(event.target.value)} />
+                        <div className="text-xs text-muted-foreground">
+                          Metadata only. Playback still requires a direct MP3, WAV, or OGG URL. Spotify Web Playback later requires Spotify Premium.
+                        </div>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {spotifyResults.slice(0, 4).map((track) => (
+                            <button
+                              key={track.id}
+                              type="button"
+                              onClick={() => setDraft({
+                                ...draft,
+                                walkUpSong: track.title,
+                                spotifyTitle: track.title,
+                                spotifyArtist: track.artist,
+                                spotifyAlbumArt: track.albumArt,
+                                spotifyUrl: track.spotifyUrl,
+                              })}
+                              className="flex gap-3 rounded-lg border border-border bg-background/65 p-2 text-left transition hover:border-green-300"
+                            >
+                              <img src={track.albumArt} alt="" className="h-12 w-12 rounded object-cover" />
+                              <span>
+                                <span className="block font-heading">{track.title}</span>
+                                <span className="block text-xs text-muted-foreground">{track.artist}</span>
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <Button onClick={() => save(team)} className="font-heading uppercase">Save Profile</Button>

@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMemo, useState } from "react";
 import { ownerLegacyScore, useLeagueLegacy } from "@/lib/legacyData";
 import { filterWalkUpSongs, getDefaultWalkUpSongUrl, getWalkUpSongLabel, isPlayableAudioUrl, playWalkUpPreview, walkUpSongCategories, type WalkUpSongCategoryFilter } from "@/lib/walkUpSongs";
+import { searchSpotifyMetadata } from "@/lib/spotifyMetadata";
 
 type OwnerTeam = {
   id: number;
@@ -33,6 +34,10 @@ type OwnerTeam = {
   audioUrl?: string | null;
   soundEffectUrl?: string | null;
   soundEffect?: string | null;
+  spotifyTitle?: string | null;
+  spotifyArtist?: string | null;
+  spotifyAlbumArt?: string | null;
+  spotifyUrl?: string | null;
   draftPersonality?: string | null;
   rivalries?: string | null;
   championshipHistory?: string | null;
@@ -60,8 +65,10 @@ export default function OwnerProfile() {
   const [draft, setDraft] = useState<Partial<OwnerTeam>>({});
   const [songFilter, setSongFilter] = useState<WalkUpSongCategoryFilter>("All");
   const [songSearch, setSongSearch] = useState("");
+  const [spotifySearch, setSpotifySearch] = useState("");
   const current = useMemo(() => ({ ...team, ...draft }) as OwnerTeam | undefined, [draft, team]);
   const filteredSongs = filterWalkUpSongs(songFilter, songSearch);
+  const spotifyResults = searchSpotifyMetadata(spotifySearch || current?.walkUpSong || "");
   const legacyOwner = legacy.owners.find((owner) => owner.id === profileId);
   const ownerTrophies = legacy.trophies.filter((trophy) => trophy.teamId === profileId);
   const ownerHistory = legacy.history.filter((event) => event.teamId === profileId);
@@ -82,6 +89,10 @@ export default function OwnerProfile() {
         audioUrl: savedAudioUrl,
         soundEffectUrl: savedSoundEffect,
         soundEffect: savedSoundEffect,
+        spotifyTitle: draft.spotifyTitle ?? team.spotifyTitle ?? savedSong,
+        spotifyArtist: draft.spotifyArtist ?? team.spotifyArtist ?? null,
+        spotifyAlbumArt: draft.spotifyAlbumArt ?? team.spotifyAlbumArt ?? null,
+        spotifyUrl: draft.spotifyUrl ?? team.spotifyUrl ?? null,
       }),
     });
     setDraft({});
@@ -162,6 +173,7 @@ export default function OwnerProfile() {
             { icon: Shield, label: "Mascot", value: current.mascot ?? "TBD" },
             { icon: Trophy, label: "Slogan", value: current.slogan ?? "No slogan" },
             { icon: Music2, label: "Walk-Up Song", value: current.walkUpSong ?? "No song selected" },
+            { icon: Music2, label: "Spotify Metadata", value: current.spotifyTitle ? `${current.spotifyTitle}${current.spotifyArtist ? ` - ${current.spotifyArtist}` : ""}` : "No Spotify metadata selected" },
           ].map((item) => (
             <Card key={item.label} className="bg-card/75 border-white/10">
               <CardContent className="p-5">
@@ -330,6 +342,39 @@ export default function OwnerProfile() {
               <div className="space-y-1 col-span-2"><Label>Actual Song Preview URL</Label><Input placeholder="https://.../preview.mp3" value={current.walkUpSongUrl ?? current.audioUrl ?? ""} onChange={(event) => setDraft({ ...draft, walkUpSongUrl: event.target.value, audioUrl: event.target.value })} /></div>
               <div className="text-xs text-purple-200/75 col-span-2">{isPlayableAudioUrl(current.walkUpSongUrl ?? current.audioUrl) ? "The draft tunnel will play this real audio after Play Walk-Up is clicked." : "No playable URL yet, so LeagueVerse will use a safe demo preview."}</div>
               <div className="space-y-1"><Label>Sound Effect URL</Label><Input value={current.soundEffectUrl ?? current.soundEffect ?? ""} onChange={(event) => setDraft({ ...draft, soundEffectUrl: event.target.value, soundEffect: event.target.value })} /></div>
+              <div className="space-y-2 col-span-2 rounded-lg border border-green-400/20 bg-green-950/20 p-3">
+                <Label>Spotify Metadata Search</Label>
+                <Input placeholder="Search Spotify title or artist..." value={spotifySearch} onChange={(event) => setSpotifySearch(event.target.value)} />
+                <div className="text-xs text-muted-foreground">
+                  Metadata only. Playback still requires a direct MP3, WAV, or OGG URL. Spotify Web Playback later requires Spotify Premium.
+                </div>
+                <div className="grid gap-2">
+                  {spotifyResults.slice(0, 5).map((track) => (
+                    <button
+                      key={track.id}
+                      type="button"
+                      onClick={() => setDraft({
+                        ...draft,
+                        walkUpSong: track.title,
+                        spotifyTitle: track.title,
+                        spotifyArtist: track.artist,
+                        spotifyAlbumArt: track.albumArt,
+                        spotifyUrl: track.spotifyUrl,
+                      })}
+                      className="flex gap-3 rounded-lg border border-border bg-background/65 p-2 text-left transition hover:border-green-300"
+                    >
+                      <img src={track.albumArt} alt="" className="h-12 w-12 rounded object-cover" />
+                      <span>
+                        <span className="block font-heading">{track.title}</span>
+                        <span className="block text-xs text-muted-foreground">{track.artist}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                {current.spotifyUrl && (
+                  <a className="block text-xs text-green-200 underline" href={current.spotifyUrl} target="_blank" rel="noreferrer">Open Spotify metadata page</a>
+                )}
+              </div>
             </div>
             <div className="space-y-1"><Label>Bio</Label><Textarea value={current.bio ?? ""} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} /></div>
             <Button onClick={save} className="w-full font-heading uppercase">Save Owner Profile</Button>

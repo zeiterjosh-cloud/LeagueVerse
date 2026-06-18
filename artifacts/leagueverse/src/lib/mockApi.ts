@@ -1,4 +1,5 @@
 import { getDefaultWalkUpSongUrl, isPlayableAudioUrl, walkUpSongOptions } from "@/lib/walkUpSongs";
+import { getSpotifyMetadataForTitle } from "@/lib/spotifyMetadata";
 
 type LeagueStatus = "setup" | "predraft" | "drafting" | "completed";
 type PlayerPosition = "QB" | "RB" | "WR" | "TE" | "K" | "DEF";
@@ -34,6 +35,10 @@ type Team = {
   audioUrl?: string | null;
   soundEffectUrl?: string | null;
   soundEffect?: string | null;
+  spotifyTitle?: string | null;
+  spotifyArtist?: string | null;
+  spotifyAlbumArt?: string | null;
+  spotifyUrl?: string | null;
   draftPersonality?: string | null;
   rivalries?: string | null;
   championshipHistory?: string | null;
@@ -145,32 +150,39 @@ const seedTeams: Team[] = [
   ["Blitz Brigade", "Taylor", "The Hammer", "#ef4444", "BB", "All I Do Is Win", "49ers", "Rhinos", "Pressure breaks brackets", "6-7"],
   ["Sunday Savants", "Riley", "Professor Flex", "#8b5cf6", "SS", "Power", "Ravens", "Owls", "Think fast, draft faster", "10-3"],
   ["Fourth Down Force", "Avery", "The Gambler", "#14b8a6", "4D", "Can't Hold Us", "Lions", "Mavericks", "Never punt the moment", "5-8"],
-].map(([name, ownerName, nickname, primaryColor, logoUrl, walkUpSong, favoriteNflTeam, mascot, slogan, record], index) => ({
-  id: index + 1,
-  leagueId: 1,
-  name,
-  ownerName,
-  nickname,
-  bio: `${ownerName} built ${name} around bold draft-room calls, late-round value, and a taste for dramatic walk-up moments.`,
-  profilePhotoUrl: initialsFromName(ownerName),
-  favoriteNflTeam,
-  mascot,
-  slogan,
-  bannerUrl: `linear:${primaryColor}`,
-  record,
-  walkUpSongUrl: getDefaultWalkUpSongUrl(String(walkUpSong)),
-  audioUrl: getDefaultWalkUpSongUrl(String(walkUpSong)),
-  soundEffectUrl: "mock://stadium-hit",
-  soundEffect: "mock://stadium-hit",
-  draftPersonality: draftPersonalities[index % draftPersonalities.length],
-  rivalries: rivalryLines[index % rivalryLines.length],
-  championshipHistory: championshipLines[index % championshipLines.length],
-  draftPosition: index + 1,
-  logoUrl,
-  walkUpSong,
-  primaryColor,
-  createdAt: now,
-}));
+].map(([name, ownerName, nickname, primaryColor, logoUrl, walkUpSong, favoriteNflTeam, mascot, slogan, record], index) => {
+  const spotify = getSpotifyMetadataForTitle(String(walkUpSong));
+  return {
+    id: index + 1,
+    leagueId: 1,
+    name,
+    ownerName,
+    nickname,
+    bio: `${ownerName} built ${name} around bold draft-room calls, late-round value, and a taste for dramatic walk-up moments.`,
+    profilePhotoUrl: initialsFromName(ownerName),
+    favoriteNflTeam,
+    mascot,
+    slogan,
+    bannerUrl: `linear:${primaryColor}`,
+    record,
+    walkUpSongUrl: getDefaultWalkUpSongUrl(String(walkUpSong)),
+    audioUrl: getDefaultWalkUpSongUrl(String(walkUpSong)),
+    soundEffectUrl: "mock://stadium-hit",
+    soundEffect: "mock://stadium-hit",
+    spotifyTitle: spotify?.title ?? String(walkUpSong),
+    spotifyArtist: spotify?.artist ?? null,
+    spotifyAlbumArt: spotify?.albumArt ?? null,
+    spotifyUrl: spotify?.spotifyUrl ?? null,
+    draftPersonality: draftPersonalities[index % draftPersonalities.length],
+    rivalries: rivalryLines[index % rivalryLines.length],
+    championshipHistory: championshipLines[index % championshipLines.length],
+    draftPosition: index + 1,
+    logoUrl,
+    walkUpSong,
+    primaryColor,
+    createdAt: now,
+  };
+});
 
 function initialsFromName(name: unknown) {
   return String(name).split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
@@ -272,6 +284,10 @@ function createImportedLeague(state: MockState, platform: keyof typeof syncLeagu
     audioUrl: getDefaultWalkUpSongUrl(walkUpSongs[index % walkUpSongs.length]),
     soundEffectUrl: "mock://airhorn",
     soundEffect: "mock://airhorn",
+    spotifyTitle: getSpotifyMetadataForTitle(walkUpSongs[index % walkUpSongs.length])?.title ?? walkUpSongs[index % walkUpSongs.length],
+    spotifyArtist: getSpotifyMetadataForTitle(walkUpSongs[index % walkUpSongs.length])?.artist ?? null,
+    spotifyAlbumArt: getSpotifyMetadataForTitle(walkUpSongs[index % walkUpSongs.length])?.albumArt ?? null,
+    spotifyUrl: getSpotifyMetadataForTitle(walkUpSongs[index % walkUpSongs.length])?.spotifyUrl ?? null,
     draftPersonality: draftPersonalities[index % draftPersonalities.length],
     rivalries: `Imported rival ${index + 1}`,
     championshipHistory: index % 3 === 0 ? "Imported league champion" : "Chasing first banner",
@@ -290,7 +306,15 @@ function migrateWalkUpAudioUrls(state: MockState) {
   state.teams = state.teams.map((team) => {
     const audioUrl = team.walkUpSongUrl ?? team.audioUrl;
     const soundEffectUrl = team.soundEffectUrl ?? team.soundEffect ?? null;
-    if (isPlayableAudioUrl(audioUrl) && team.walkUpSongUrl === audioUrl && team.soundEffectUrl === soundEffectUrl) return team;
+    const spotify = getSpotifyMetadataForTitle(team.walkUpSong);
+    if (
+      isPlayableAudioUrl(audioUrl)
+      && team.walkUpSongUrl === audioUrl
+      && team.soundEffectUrl === soundEffectUrl
+      && team.spotifyTitle
+      && team.spotifyArtist
+      && team.spotifyUrl
+    ) return team;
     changed = true;
     return {
       ...team,
@@ -299,6 +323,10 @@ function migrateWalkUpAudioUrls(state: MockState) {
       audioUrl: isPlayableAudioUrl(audioUrl) ? audioUrl : getDefaultWalkUpSongUrl(team.walkUpSong ?? "Thunderstruck"),
       soundEffectUrl,
       soundEffect: soundEffectUrl,
+      spotifyTitle: team.spotifyTitle ?? spotify?.title ?? team.walkUpSong ?? "Thunderstruck",
+      spotifyArtist: team.spotifyArtist ?? spotify?.artist ?? null,
+      spotifyAlbumArt: team.spotifyAlbumArt ?? spotify?.albumArt ?? null,
+      spotifyUrl: team.spotifyUrl ?? spotify?.spotifyUrl ?? null,
     };
   });
   if (changed) writeState(state);
@@ -582,6 +610,10 @@ async function handleApi(input: RequestInfo | URL, init?: RequestInit): Promise<
       audioUrl: getDefaultWalkUpSongUrl(walkUpSong),
       soundEffectUrl: null,
       soundEffect: null,
+      spotifyTitle: getSpotifyMetadataForTitle(walkUpSong)?.title ?? walkUpSong,
+      spotifyArtist: getSpotifyMetadataForTitle(walkUpSong)?.artist ?? null,
+      spotifyAlbumArt: getSpotifyMetadataForTitle(walkUpSong)?.albumArt ?? null,
+      spotifyUrl: getSpotifyMetadataForTitle(walkUpSong)?.spotifyUrl ?? null,
       draftPersonality: draftPersonalities[index % draftPersonalities.length],
       rivalries: "TBD",
       championshipHistory: "New franchise",
