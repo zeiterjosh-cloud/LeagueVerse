@@ -4,8 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 
+import JDZBrandStore from "@/pages/jdz-brand-store";
 import Home from "@/pages/home";
-import Landing from "@/pages/landing";
 import Auth from "@/pages/auth";
 import Players from "@/pages/players";
 import Owners from "@/pages/owners";
@@ -15,6 +15,8 @@ import Rivalries from "@/pages/rivalries";
 import History from "@/pages/history";
 import BroadcastPage from "@/pages/broadcast-page";
 import TeamManager from "@/pages/team-manager";
+import Revenue from "@/pages/revenue";
+import JDZSportsAI from "@/pages/jdz-sports-ai";
 import NewLeague from "@/pages/leagues/new";
 import LeagueOverview from "@/pages/leagues/[id]";
 import DraftBoard from "@/pages/leagues/[id]/draft";
@@ -45,9 +47,11 @@ const ChampionshipTracker = () => <BroadcastPage slug="championship-tracker" />;
 
 function Router() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={Landing} />
+    <Switch>
+      <Route path="/" component={JDZBrandStore} />
+      <Route>
+        <Layout>
+          <Switch>
         <Route path="/auth" component={Auth} />
         <Route path="/dashboard" component={Home} />
         <Route path="/players" component={Players} />
@@ -76,14 +80,17 @@ function Router() {
         <Route path="/team-improvements" component={TeamImprovements} />
         <Route path="/championship-tracker" component={ChampionshipTracker} />
         <Route path="/team-manager" component={TeamManager} />
+        <Route path="/jdz-sports-ai" component={JDZSportsAI} />
         <Route path="/leagues/new" component={NewLeague} />
         <Route path="/leagues/:id" component={LeagueOverview} />
         <Route path="/leagues/:id/draft" component={DraftBoard} />
         <Route path="/leagues/:id/teams/:teamId" component={TeamRoster} />
         <Route path="/leagues/:id/grades" component={DraftGrades} />
         <Route component={NotFound} />
-      </Switch>
-    </Layout>
+          </Switch>
+        </Layout>
+      </Route>
+    </Switch>
   );
 }
 
